@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <h2>Welcome, {{ current_user.college_id }}</h2>
+
+    <!-- Notifications -->
+    {% if notifications %}
+    <div class="preference-list">
+        <h3>Notifications</h3>
+        <ul>
+            {% for note in notifications %}
+            <li>
+                <strong>{{ note.accepted_user.college_id }}</strong>
+                (
+                <a href="https://mail.google.com/mail/?view=cm&fs=1&to={{ note.accepted_user.email }}" target="_blank">
+                    {{ note.accepted_user.email }}
+                </a>
+                )
+                requested your room <strong>{{ note.available }}</strong> in exchange for <strong>{{ note.needed }}</strong>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Toggle Form Button -->
+    <button id="toggleFormBtn" class="btn">Post Your Preference</button>
+
+    <!-- Hidden Form -->
+    <div id="preferenceForm" class="form-container" style="display: none;">
+        <h3>Post Room Preference</h3>
+        <form method="POST" onsubmit="return validateAndTrim();">
+            <input type="text" name="available" id="available" placeholder="Your Current Room No." required>
+            <input type="text" name="needed" id="needed" placeholder="Preferred Room No." required>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+
+    <!-- My Posted Preferences -->
+    <div class="preference-list">
+        <h3>My Posted Preferences</h3>
+        {% if my_prefs %}
+        <table>
+            <tr>
+                <th>Available</th>
+                <th>Needed</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+            {% for pref in my_prefs %}
+            <tr>
+                <td>{{ pref.available }}</td>
+                <td>{{ pref.needed }}</td>
+                <td>
+                    {% if pref.selected %}
+                        Accepted by user ID {{ pref.accepted_by }}
+                    {% else %}
+                        Not yet accepted
+                    {% endif %}
+                </td>
+                <td>
+                    <a class="btn" href="{{ url_for('edit', pref_id=pref.id) }}">Edit</a>
+                    <a class="btn" href="{{ url_for('delete', pref_id=pref.id) }}">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>You haven’t posted any preferences yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Other Users' Preferences -->
+    <div class="preference-list">
+        <h3>Available Preferences from Others</h3>
+        {% if other_prefs %}
+        <table>
+            <tr>
+                <th>User</th>
+                <th>Available</th>
+                <th>Needed</th>
+                <th>Action</th>
+            </tr>
+            {% for pref in other_prefs %}
+            <tr>
+                <td>{{ pref.user.college_id }}</td>
+                <td>{{ pref.available }}</td>
+                <td>{{ pref.needed }}</td>
+                <td>
+                    {% if pref.selected and pref.accepted_by == current_user.id %}
+                        <form action="{{ url_for('cancel', pref_id=pref.id) }}" method="POST">
+                            <button class="btn" style="background-color: orange;">Cancel Request</button>
+                        </form>
+                    {% elif pref.selected %}
+                        <span style="color: gray;">Already Accepted</span>
+                    {% else %}
+                        <a class="btn" href="{{ url_for('accept', pref_id=pref.id) }}">Send Request</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>No room preferences posted yet by others.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    document.getElementById('toggleFormBtn').addEventListener('click', () => {
+        const form = document.getElementById('preferenceForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    });
+
+    function validateAndTrim() {
+        let available = document.getElementById('available');
+        let needed = document.getElementById('needed');
+
+        available.value = available.value.trim().toUpperCase();
+        needed.value = needed.value.trim().toUpperCase();
+
+        return true;
+    }
+</script>
+{% endblock %}

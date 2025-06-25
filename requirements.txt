@@ -1,0 +1,6 @@
+Flask
+Flask-SocketIO
+Flask-SQLAlchemy
+Flask-Login
+psycopg2-binary
+email-validator

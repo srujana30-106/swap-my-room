@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Create an Account</h2>
+    <form method="POST">
+        <!-- College ID -->
+        <div class="input-wrapper">
+            <input type="text" name="college_id" placeholder="College ID (e.g., RGUKT123)" required>
+        </div>
+
+        <!-- Email -->
+        <div class="input-wrapper">
+            <input type="email" name="email" placeholder="Email" required>
+        </div>
+
+        <!-- Password with eye icon -->
+        <div class="input-wrapper">
+            <input type="password" name="password" id="register-password" placeholder="Password" required>
+            <i id="register-icon" class="fa-solid fa-eye" onclick="togglePassword('register-password', 'register-icon')"></i>
+        </div>
+
+        <button type="submit">Register</button>
+    </form>
+    <p>Already have an account? <a href="/login">Login</a></p>
+</div>
+
+<script>
+    function togglePassword(inputId, iconId) {
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+        if (input.type === "password") {
+            input.type = "text";
+            icon.classList.remove("fa-eye");
+            icon.classList.add("fa-eye-slash");
+        } else {
+            input.type = "password";
+            icon.classList.remove("fa-eye-slash");
+            icon.classList.add("fa-eye");
+        }
+    }
+</script>
+{% endblock %}

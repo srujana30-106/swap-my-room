@@ -1,0 +1,19 @@
+<h2>Search Room Swaps</h2>
+<form method="GET">
+  <input name="floor" placeholder="Filter by Floor">
+  <input name="room" placeholder="Filter by Room">
+  <button type="submit">Filter</button>
+</form>
+<ul>
+  {% for p in others %}
+    <li>
+      Available: {{p.available}} | Needed: {{p.needed}} | Floor: {{p.floor}}
+      {% if not p.selected %}
+        <a href="/accept/{{p.id}}">Accept Swap</a>
+      {% else %}
+        {% set accepter = users.query.get(p.accepted_by) %}
+        <p>Already accepted by {{accepter.college_id}} ({{accepter.email}})</p>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>
