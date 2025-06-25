@@ -5,7 +5,6 @@ from flask_socketio import SocketIO, emit
 from sqlalchemy.orm import relationship, joinedload
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
-
 import re
 
 app = Flask(__name__)
@@ -14,6 +13,16 @@ app.secret_key = 'secret-key'
 # Database Configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:srujana1030@localhost/room_swap_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Email Configuration
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'srujanasanaka970@gmail.com'
+app.config['MAIL_PASSWORD'] = 'eutkskzpwsvkwjiz'
+
+mail = Mail(app)
+serializer = URLSafeTimedSerializer(app.secret_key)
 
 # Extensions
 db = SQLAlchemy(app)
@@ -28,6 +37,9 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
 
+    def set_password(self, new_password):
+        self.password = new_password
+
 class RoomPreference(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
@@ -39,7 +51,6 @@ class RoomPreference(db.Model):
     user = relationship('User', foreign_keys=[user_id])
     accepted_user = relationship('User', foreign_keys=[accepted_by], post_update=True)
 
-# Login loader
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -91,6 +102,7 @@ def login():
             return redirect(url_for('dashboard'))
         flash('Invalid credentials', 'danger')
     return render_template('login.html')
+
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
@@ -106,7 +118,6 @@ def forgot_password():
         else:
             flash('Email not found', 'danger')
     return render_template('forgot_password.html')
-
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
@@ -154,13 +165,11 @@ def dashboard():
     floor_filter = request.args.get('floor')
     my_prefs = RoomPreference.query.filter_by(user_id=current_user.id).all()
 
-    # Filter Others' Preferences
     other_prefs_query = RoomPreference.query.filter(RoomPreference.user_id != current_user.id)
     if floor_filter:
         other_prefs_query = other_prefs_query.filter(RoomPreference.available.ilike(f'{floor_filter}%'))
     other_prefs = other_prefs_query.order_by(RoomPreference.id.desc()).all()
 
-    # Notifications (Accepted requests)
     notifications = RoomPreference.query.options(joinedload(RoomPreference.accepted_user)) \
         .filter(RoomPreference.user_id == current_user.id) \
         .filter(RoomPreference.selected == True) \
