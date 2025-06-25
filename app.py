@@ -3,6 +3,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 from flask_socketio import SocketIO, emit
 from sqlalchemy.orm import relationship, joinedload
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer
+
 import re
 
 app = Flask(__name__)
@@ -88,6 +91,40 @@ def login():
             return redirect(url_for('dashboard'))
         flash('Invalid credentials', 'danger')
     return render_template('login.html')
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form['email']
+        user = User.query.filter_by(email=email).first()
+        if user:
+            token = serializer.dumps(email, salt='reset-password')
+            reset_link = url_for('reset_password', token=token, _external=True)
+            msg = Message('Reset Your Password', recipients=[email], sender=app.config['MAIL_USERNAME'])
+            msg.body = f'Click the link to reset your password: {reset_link}'
+            mail.send(msg)
+            flash('Password reset link sent! Check your email.', 'success')
+        else:
+            flash('Email not found', 'danger')
+    return render_template('forgot_password.html')
+
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    try:
+        email = serializer.loads(token, salt='reset-password', max_age=3600)
+    except:
+        flash('The reset link is invalid or has expired.', 'danger')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        user = User.query.filter_by(email=email).first()
+        new_password = request.form['password']
+        user.set_password(new_password)
+        db.session.commit()
+        flash('Password updated! You can now login.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('reset_password.html')
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 @login_required
