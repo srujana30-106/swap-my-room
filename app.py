@@ -7,46 +7,39 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 import re
 
+from config import Config  # import config
+
 app = Flask(__name__)
-app.secret_key = 'secret-key'
-
-# Database Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:srujana1030@localhost/room_swap_db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Email Configuration
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'srujanasanaka970@gmail.com'
-app.config['MAIL_PASSWORD'] = 'eutkskzpwsvkwjiz'
-
-mail = Mail(app)
-serializer = URLSafeTimedSerializer(app.secret_key)
+app.config.from_object(Config)  # load configuration from config.py
 
 # Extensions
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 socketio = SocketIO(app)
+mail = Mail(app)
+serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 # Models
 class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+
     id = db.Column(db.Integer, primary_key=True)
     college_id = db.Column(db.String(20), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
+    phone = db.Column(db.String(10), unique=True, nullable=False)  
 
     def set_password(self, new_password):
         self.password = new_password
 
 class RoomPreference(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     available = db.Column(db.String(20))
     needed = db.Column(db.String(20))
     selected = db.Column(db.Boolean, default=False)
-    accepted_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    accepted_by = db.Column(db.Integer, db.ForeignKey('users.id'))
 
     user = relationship('User', foreign_keys=[user_id])
     accepted_user = relationship('User', foreign_keys=[accepted_by], post_update=True)
@@ -65,6 +58,7 @@ def register():
         college_id = request.form.get('college_id').strip().upper()
         password = request.form.get('password')
         email = request.form.get('email').strip()
+        phone = request.form.get('phone').strip()
 
         if not re.match(r'^[A-Z0-9]{8}$', college_id):
             flash('College ID must be exactly 8 characters: uppercase letters and numbers only.', 'warning')
@@ -72,16 +66,19 @@ def register():
 
         existing_id = User.query.filter_by(college_id=college_id).first()
         existing_email = User.query.filter_by(email=email).first()
+        existing_phone = User.query.filter_by(phone=phone).first()
 
-        if existing_id and existing_email:
-            flash('Both College ID and Email already exist. Try another.', 'danger')
+        if existing_id and existing_email and existing_phone:
+            flash('College ID, Email, and Phone already exist. Try another.', 'danger')
         elif existing_id:
             flash('College ID already exists. Try another.', 'danger')
         elif existing_email:
             flash('Email already in use. Try another.', 'danger')
+        elif existing_phone:
+            flash('Phone number already in use. Try another.', 'danger')
         else:
             try:
-                user = User(college_id=college_id, password=password, email=email)
+                user = User(college_id=college_id, password=password, email=email, phone=phone)
                 db.session.add(user)
                 db.session.commit()
                 flash('Account created. Please login.', 'success')
@@ -149,6 +146,7 @@ def dashboard():
             available=available,
             needed=needed
         ).first()
+
         if existing:
             flash('You already posted this preference.', 'warning')
         else:
@@ -166,8 +164,12 @@ def dashboard():
     my_prefs = RoomPreference.query.filter_by(user_id=current_user.id).all()
 
     other_prefs_query = RoomPreference.query.filter(RoomPreference.user_id != current_user.id)
+
     if floor_filter:
-        other_prefs_query = other_prefs_query.filter(RoomPreference.available.ilike(f'{floor_filter}%'))
+        other_prefs_query = other_prefs_query.filter(
+            RoomPreference.available.ilike(f'{floor_filter}%')
+        )
+
     other_prefs = other_prefs_query.order_by(RoomPreference.id.desc()).all()
 
     notifications = RoomPreference.query.options(joinedload(RoomPreference.accepted_user)) \

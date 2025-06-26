@@ -3,6 +3,8 @@
 <div class="container">
     <h2>Welcome, {{ current_user.college_id }}</h2>
 
+    
+
     <!-- Notifications -->
     {% if notifications %}
     <div class="preference-list">
@@ -12,12 +14,14 @@
             <li>
                 <strong>{{ note.accepted_user.college_id }}</strong>
                 (
-                <a href="https://mail.google.com/mail/?view=cm&fs=1&to={{ note.accepted_user.email }}" target="_blank">
-                    {{ note.accepted_user.email }}
+                <a href="https://wa.me/91{{ note.accepted_user.phone }}" target="_blank">
+                    WhatsApp: {{ note.accepted_user.phone }}
+                    <i class="fab fa-whatsapp" style="color: green;"></i>
                 </a>
                 )
                 requested your room <strong>{{ note.available }}</strong> in exchange for <strong>{{ note.needed }}</strong>
             </li>
+
             {% endfor %}
         </ul>
     </div>
@@ -69,10 +73,21 @@
         <p>You haven’t posted any preferences yet.</p>
         {% endif %}
     </div>
-
+        
+    <!-- Filter by Floor -->
+    <form method="GET" action="{{ url_for('dashboard') }}" style="margin-bottom: 20px;">
+        <label for="floor">Filter by Floor:</label>
+        <select name="floor" id="floor" onchange="this.form.submit()">
+            <option value="">All Floors</option>
+            <option value="1" {% if floor_filter == '1' %}selected{% endif %}>1st Floor</option>
+            <option value="2" {% if floor_filter == '2' %}selected{% endif %}>2nd Floor</option>
+            <option value="3" {% if floor_filter == '3' %}selected{% endif %}>3rd Floor</option>
+            <!-- Add more options if needed -->
+        </select>
+    </form>
     <!-- Other Users' Preferences -->
     <div class="preference-list">
-        <h3>Available Preferences from Others</h3>
+        <h3>Available Preferences from Others {% if floor_filter %}(Filtered by Floor {{ floor_filter }}){% endif %}</h3>
         {% if other_prefs %}
         <table>
             <tr>
@@ -101,7 +116,7 @@
             {% endfor %}
         </table>
         {% else %}
-        <p>No room preferences posted yet by others.</p>
+        <p>No room preferences posted yet{% if floor_filter %} on this floor{% endif %}.</p>
         {% endif %}
     </div>
 </div>
@@ -115,10 +130,8 @@
     function validateAndTrim() {
         let available = document.getElementById('available');
         let needed = document.getElementById('needed');
-
         available.value = available.value.trim().toUpperCase();
         needed.value = needed.value.trim().toUpperCase();
-
         return true;
     }
 </script>
