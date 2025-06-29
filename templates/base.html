@@ -34,7 +34,7 @@
     {% endwith %}
 
     <!-- Live Notification Box -->
-    <div id="notification" class="live-notification"></div>
+    <div id="notification" class="live-notification" style="display: none;"></div>
 
     <main class="container">
         {% block content %}{% endblock %}
@@ -53,14 +53,44 @@
 
         socket.on('connect', () => {
             console.log('Connected to server');
+            const notificationBox = document.getElementById("notification");
+            if (notificationBox) {
+                notificationBox.innerText = "Connected to live updates!";
+                notificationBox.style.display = "block";
+                notificationBox.style.backgroundColor = "#28a745";
+                setTimeout(() => { 
+                    notificationBox.style.display = "none"; 
+                }, 2000);
+            }
         });
 
-        socket.on('new_post', (data) => {
-            const box = document.getElementById("notification");
-            box.innerText = `${data.user} just posted a new room preference!`;
-            box.style.display = "block";
-            setTimeout(() => { box.style.display = "none"; }, 4000);
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
         });
+
+        socket.on('preference_update', (data) => {
+            const box = document.getElementById("notification");
+            if (box) {
+                box.innerText = data.message;
+                box.style.display = "block";
+                box.style.backgroundColor = "#007bff";
+                setTimeout(() => { 
+                    box.style.display = "none"; 
+                }, 5000);
+            }
+        });
+
+        // Function to emit new preference events
+        function emitNewPreference(available, needed, user) {
+            socket.emit('new_preference', {
+                available: available,
+                needed: needed,
+                user: user
+            });
+        }
+
+        // Make emitNewPreference globally available
+        window.emitNewPreference = emitNewPreference;
     </script>
 </body>
 </html>

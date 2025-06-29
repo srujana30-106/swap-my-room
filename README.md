@@ -1,134 +1,202 @@
-# Swap My Room 
+# Hostel Room Swap Platform
 
-**Swap My Room** is a simple web application that I created specifically for my **hostel community** to make it easy for students to **swap their rooms with others based on mutual preferences**.  
-After seeing how time-consuming and inefficient the manual process of finding someone to swap with was, I built this platform to streamline the process and help my fellow hostel mates.
+A Flask-based web application for college students to swap hostel rooms with real-time notifications using SocketIO.
 
----
+## 🚀 Features
 
-## Purpose & My Intention
+- **User Registration & Authentication** with college ID validation
+- **Room Preference Posting** - Post available and needed rooms
+- **Real-time Notifications** - Live updates when new preferences are posted
+- **Room Request System** - Send and manage swap requests
+- **Email Integration** - Password reset functionality
+- **Floor-based Filtering** - Filter rooms by floor numbers
+- **WhatsApp Integration** - Direct contact through WhatsApp links
 
-The main purpose of this project was to solve a **real, problem in my hostel**:
+## 🏗️ Project Structure
 
-After room allotment, many students find their assigned rooms don’t suit their needs — whether it’s the block, floor, roommates. Meanwhile, someone else in the hostel might actually want that exact type of room.
+```
+swap-my-room/
+├── app.py              # Main Flask application
+├── models.py           # Database models (User, RoomPreference)
+├── config.py           # Application configuration
+├── database.py         # Database initialization script
+├── requirements.txt    # Python dependencies
+├── templates/          # HTML templates
+│   ├── base.html      # Base template with SocketIO
+│   ├── dashboard.html # Main dashboard
+│   ├── login.html     # Login page
+│   ├── register.html  # Registration page
+│   └── ...
+└── static/            # CSS and static files
+```
 
-My intention behind building **Swap My Room** was to:
-- Provide a **dedicated platform for my hostel mates** to list their current rooms and mention what kind of swap they’re looking for.
-- Replace the informal, time-consuming process of finding a swap partner through word of mouth or random notices.
-- Apply my skills to build a **practical full-stack web application**, enhancing my knowledge of Flask, PostgreSQL, and deploying real-world projects.
+## 🛠️ Setup Instructions
 
----
+### 1. Environment Setup
 
-## Features
+Create a `.env` file in the project root:
 
-**Post Your Current Room**  
-- Students can submit details about their allotted rooms: block, floor, roommates, facilities, etc.
-
-**Specify Desired Swap Preferences**  
-- Clearly state the kind of room or location they’d prefer to move into.
-
-**Browse Other Listings**  
-- See rooms posted by other hostel mates and use filters to find the best match.
-
-**Request a Swap via WhatsApp or Phone**  
-- The app generates a direct WhatsApp link so students can easily connect and discuss swaps.
-
-**Authentication & Profiles**  
-- Secure login system to manage your room posts, preferences, and incoming swap requests.
-
-**Basic Admin Dashboard**  
-- To oversee users, room listings, and monitor activity.
-
----
-
-## Tech Stack
-
-- **Backend:** Python, Flask
-- **Database:** PostgreSQL (deployed on Render)
-- **Frontend:** HTML, CSS, Jinja2 templates
-- **ORM:** SQLAlchemy
-
----
-
-##  How to Set Up & Run Locally
-
-**Clone the repository**
 ```bash
-git clone https://github.com/yourusername/swap-my-room.git
+# Security
+SECRET_KEY=your-super-secret-key-here
+
+# PostgreSQL Database
+DATABASE_URL=postgresql://username:password@host:port/database_name
+
+# Email Configuration (Gmail)
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+```
+
+### 2. Database Configuration
+
+For **local development**, you have options:
+
+**Option A: Local PostgreSQL**
+```bash
+DATABASE_URL=postgresql://username:password@localhost:5432/swap_room_db
+```
+
+**Option B: Railway PostgreSQL**
+```bash
+# Get this from your Railway project dashboard
+DATABASE_URL=postgresql://username:password@containers-us-west-xxx.railway.app:6543/railway
+```
+
+### 3. Installation
+
+```bash
+# Clone the repository
+git clone <your-repo-url>
 cd swap-my-room
-```
 
-**Create a virtual environment & activate it**
-```bash
-python -m venv venv
-source venv/bin/activate     # On Windows: venv\Scripts\activate
-```
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-**Install dependencies**
-```bash
+# Install dependencies
 pip install -r requirements.txt
+
+# Initialize database
+python database.py
 ```
 
-**Add your configuration**
+### 4. Running the Application
 
-Create a `config.py` file (or set these as environment variables) with:
-
-```python
-DATABASE_URL = "postgresql://username:password@host:port/dbname"
-SECRET_KEY = "your_secret_key"
-
-MAIL_SERVER = "smtp.yourprovider.com"
-MAIL_PORT = 587
-MAIL_USE_TLS = True
-MAIL_USERNAME = "your_email"
-MAIL_PASSWORD = "your_password"
-```
-
-**Run the application**
 ```bash
-flask run
+# Start the Flask-SocketIO server
+python app.py
 ```
-Then open `http://127.0.0.1:5000` in your browser.
+
+The application will be available at `http://localhost:5000`
+
+## 📱 Real-time Features
+
+The application uses **Flask-SocketIO** for real-time features:
+
+- **Live Connection Status** - Users see when they're connected
+- **Instant Notifications** - New room preferences appear immediately
+- **Broadcast Updates** - All connected users receive updates
+
+### SocketIO Events:
+
+- `connect` - User connects to the server
+- `disconnect` - User disconnects
+- `new_preference` - Emitted when posting new room preference
+- `preference_update` - Broadcasted to all users for live updates
+
+## 🗄️ Database Models
+
+### User Model
+```python
+- id (Primary Key)
+- college_id (Unique, 8 characters)
+- password (Hashed)
+- email (Unique)
+- phone (Unique, 10 digits)
+```
+
+### RoomPreference Model
+```python
+- id (Primary Key)
+- user_id (Foreign Key to User)
+- available (Current room number)
+- needed (Desired room number)
+- selected (Boolean - if accepted)
+- accepted_by (Foreign Key to User)
+- created_at (Timestamp)
+```
+
+## 🔧 Configuration
+
+### Email Setup (Gmail)
+1. Go to Google Account settings
+2. Enable 2-Factor Authentication
+3. Generate an "App Password"
+4. Use the app password in `MAIL_PASSWORD`
+
+### Database Setup
+The application now uses a modular structure:
+- **models.py** - Contains all database models
+- **database.py** - Creates tables without dropping existing ones
+- Supports PostgreSQL only (no SQLite fallback)
+
+## 🚀 Deployment
+
+### Railway Deployment
+1. Connect your GitHub repository to Railway
+2. Set environment variables in Railway dashboard
+3. Railway will automatically detect and deploy the Flask app
+
+### Environment Variables for Production:
+```bash
+SECRET_KEY=your-production-secret-key
+DATABASE_URL=postgresql://...  # Railway provides this
+MAIL_USERNAME=your-gmail@gmail.com
+MAIL_PASSWORD=your-app-password
+```
+
+## 🔒 Security Features
+
+- **Input Validation** - College ID format validation (8 alphanumeric)
+- **Duplicate Prevention** - Prevents duplicate registrations
+- **Session Management** - Secure user sessions
+- **Password Reset** - Secure token-based password reset
+- **CSRF Protection** - Built-in Flask protection
+
+## 🐛 Troubleshooting
+
+### Database Connection Issues
+```bash
+# Test database connection
+python -c "from app import app; from models import db; 
+with app.app_context(): db.create_all(); print('Database connected!')"
+```
+
+### SocketIO Connection Issues
+- Check if port 5000 is available
+- Ensure firewall allows WebSocket connections
+- Check browser console for SocketIO errors
+
+### Common Issues
+1. **"No such table" error** - Run `python database.py`
+2. **SocketIO not connecting** - Check CORS settings
+3. **Email not sending** - Verify Gmail app password
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ---
 
-## Database Overview
-
-- **users** — stores student login details & profiles.
-- **rooms** — stores posted room information.
-- **swap_requests** — tracks who requested swaps and their statuses.
-
----
-
-## Future Plans & Ideas
-
-Integrate **live chat** so students can negotiate swap details instantly.  
-Add **hostel block maps** to visualize where available rooms are.  
-
----
-
-## Why I Built This
-
-I developed **Swap My Room** to directly help students in my hostel:
-
-- To reduce the hassle of manually finding someone to swap rooms with.
-- To provide a **transparent, structured way** to post, search, and request swaps.
-- As a hands-on learning project to implement a **complete web application**, from backend to frontend, and deploy it live.
-
-It’s a project close to my heart because it directly solves a **problem faced by me and my friends** in our hostel.
-
----
-
-## Contact
-
-Feel free to reach out to me if you’d like to discuss improvements, see the deployment, or collaborate:
-
-- **Email:** (sanakalakshmisrujana@gmail.com)
-- **GitHub:** [srujana30-106](https://github.com/srujana30-106)
-
----
-
-## Show Your Support
-
-If you found this project interesting or useful, please ⭐ the repository — it helps more people discover it and keeps me motivated to build more solutions like this!
+**Note:** This application is designed for college hostel room swapping. Make sure to comply with your institution's housing policies.
 
 ---

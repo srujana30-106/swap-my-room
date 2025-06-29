@@ -1,50 +1,28 @@
 from flask import Flask, render_template, redirect, request, url_for, flash
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
-from sqlalchemy.orm import relationship, joinedload
+from sqlalchemy.orm import joinedload
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 import re
 
-from config import Config  # import config
+from config import Config
+from models import db, User, RoomPreference
 
 app = Flask(__name__)
 app.config.from_object(Config)  # load configuration from config.py
 
-# Extensions
-db = SQLAlchemy(app)
+# Initialize extensions with app
+db.init_app(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 with app.app_context():
     db.create_all()
 
-# Models
-class User(UserMixin, db.Model):
-    __tablename__ = 'users'
-
-    id = db.Column(db.Integer, primary_key=True)
-    college_id = db.Column(db.String(20), unique=True, nullable=False)
-    password = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), unique=True, nullable=False)
-    phone = db.Column(db.String(10), unique=True, nullable=False)  
-
-    def set_password(self, new_password):
-        self.password = new_password
-
-class RoomPreference(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    available = db.Column(db.String(20))
-    needed = db.Column(db.String(20))
-    selected = db.Column(db.Boolean, default=False)
-    accepted_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-
-    user = relationship('User', foreign_keys=[user_id])
-    accepted_user = relationship('User', foreign_keys=[accepted_by], post_update=True)
+# Models are now in models.py
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -66,28 +44,34 @@ def register():
             flash('College ID must be exactly 8 characters: uppercase letters and numbers only.', 'warning')
             return redirect(url_for('register'))
 
-        existing_id = User.query.filter_by(college_id=college_id).first()
-        existing_email = User.query.filter_by(email=email).first()
-        existing_phone = User.query.filter_by(phone=phone).first()
+        try:
+            existing_id = User.query.filter_by(college_id=college_id).first()
+            existing_email = User.query.filter_by(email=email).first()
+            existing_phone = User.query.filter_by(phone=phone).first()
 
-        if existing_id and existing_email and existing_phone:
-            flash('College ID, Email, and Phone already exist. Try another.', 'danger')
-        elif existing_id:
-            flash('College ID already exists. Try another.', 'danger')
-        elif existing_email:
-            flash('Email already in use. Try another.', 'danger')
-        elif existing_phone:
-            flash('Phone number already in use. Try another.', 'danger')
-        else:
-            try:
-                user = User(college_id=college_id, password=password, email=email, phone=phone)
-                db.session.add(user)
-                db.session.commit()
-                flash('Account created. Please login.', 'success')
-                return redirect(url_for('login'))
-            except Exception:
-                db.session.rollback()
-                flash('Something went wrong. Please try again.', 'danger')
+            if existing_id and existing_email and existing_phone:
+                flash('College ID, Email, and Phone already exist. Try another.', 'danger')
+            elif existing_id:
+                flash('College ID already exists. Try another.', 'danger')
+            elif existing_email:
+                flash('Email already in use. Try another.', 'danger')
+            elif existing_phone:
+                flash('Phone number already in use. Try another.', 'danger')
+            else:
+                try:
+                    user = User(college_id=college_id, password=password, email=email, phone=phone)
+                    db.session.add(user)
+                    db.session.commit()
+                    flash('Account created. Please login.', 'success')
+                    return redirect(url_for('login'))
+                except Exception as e:
+                    db.session.rollback()
+                    print(f"Database error during user creation: {e}")
+                    flash('Something went wrong. Please try again.', 'danger')
+        except Exception as e:
+            print(f"Database connection error: {e}")
+            flash('Database connection error. Please try again later.', 'danger')
+            
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -240,9 +224,23 @@ def logout():
     logout_user()
     return redirect(url_for('home'))
 
+# SocketIO Event Handlers
 @socketio.on('connect')
 def handle_connect():
-    emit('connected', {'data': 'Connected'})
+    print(f'Client connected: {request.sid}')
+    emit('connected', {'data': 'Connected to server!'})
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print(f'Client disconnected: {request.sid}')
+
+@socketio.on('new_preference')
+def handle_new_preference(data):
+    # Broadcast to all connected clients when a new preference is posted
+    emit('preference_update', {
+        'message': f"New room preference posted: {data.get('available', '')} -> {data.get('needed', '')}",
+        'user': data.get('user', 'Someone')
+    }, broadcast=True)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
