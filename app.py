@@ -16,7 +16,7 @@ app.config.from_object(Config)  # load configuration from config.py
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-socketio = SocketIO(app)
+#socketio = SocketIO(app)
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
@@ -243,4 +243,5 @@ def handle_connect():
     emit('connected', {'data': 'Connected'})
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    # socketio.run(app, debug=True)
+    app.run()
