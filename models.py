@@ -1,0 +1,38 @@
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
+from sqlalchemy.orm import relationship
+
+db = SQLAlchemy()
+
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    college_id = db.Column(db.String(20), unique=True, nullable=False)
+    password = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    phone = db.Column(db.String(10), unique=True, nullable=False)
+
+    def set_password(self, new_password):
+        self.password = new_password
+
+    def __repr__(self):
+        return f'<User {self.college_id}>'
+
+class RoomPreference(db.Model):
+    __tablename__ = 'room_preferences'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    available = db.Column(db.String(20), nullable=False)
+    needed = db.Column(db.String(20), nullable=False)
+    selected = db.Column(db.Boolean, default=False)
+    accepted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    # Relationships
+    user = relationship('User', foreign_keys=[user_id], backref='room_preferences')
+    accepted_user = relationship('User', foreign_keys=[accepted_by], post_update=True)
+
+    def __repr__(self):
+        return f'<RoomPreference {self.available} -> {self.needed}>' 

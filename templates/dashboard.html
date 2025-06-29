@@ -33,7 +33,7 @@
     <!-- Hidden Form -->
     <div id="preferenceForm" class="form-container" style="display: none;">
         <h3>Post Room Preference</h3>
-        <form method="POST" onsubmit="return validateAndTrim();">
+        <form method="POST" onsubmit="return validateAndTrimAndEmit();">
             <input type="text" name="available" id="available" placeholder="Your Current Room No." required>
             <input type="text" name="needed" id="needed" placeholder="Preferred Room No." required>
             <button type="submit">Submit</button>
@@ -126,6 +126,24 @@
         const form = document.getElementById('preferenceForm');
         form.style.display = form.style.display === 'none' ? 'block' : 'none';
     });
+
+    function validateAndTrimAndEmit() {
+        let available = document.getElementById('available');
+        let needed = document.getElementById('needed');
+        available.value = available.value.trim().toUpperCase();
+        needed.value = needed.value.trim().toUpperCase();
+        
+        // Emit SocketIO event for real-time updates
+        if (window.emitNewPreference) {
+            window.emitNewPreference(
+                available.value, 
+                needed.value, 
+                '{{ current_user.college_id }}'
+            );
+        }
+        
+        return true;
+    }
 
     function validateAndTrim() {
         let available = document.getElementById('available');

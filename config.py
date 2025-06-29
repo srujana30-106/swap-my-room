@@ -5,10 +5,10 @@ load_dotenv()  # Load variables from .env into environment
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY')
-    
+    print(SECRET_KEY)
     # Database
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
-    print('SQLALCHEMY_DATABASE_URI',SQLALCHEMY_DATABASE_URI)
+    print(SQLALCHEMY_DATABASE_URI)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Mail
