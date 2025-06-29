@@ -11,6 +11,7 @@ class Config:
         os.getenv('DATABASE_URL') or
         os.getenv('SQLALCHEMY_DATABASE_URI')
     )
+    print('SQLALCHEMY_DATABASE_URI',SQLALCHEMY_DATABASE_URI)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Mail
