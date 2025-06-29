@@ -19,6 +19,8 @@ login_manager.login_view = 'login'
 socketio = SocketIO(app)
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+with app.app_context():
+    db.create_all()
 
 # Models
 class User(UserMixin, db.Model):
