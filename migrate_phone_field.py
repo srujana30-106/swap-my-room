@@ -25,12 +25,12 @@ def migrate_phone_field():
             cursor.close()
             conn.close()
             
-            print("✅ Successfully migrated phone field from VARCHAR(10) to VARCHAR(15)")
-            print("📱 Phone numbers can now accommodate country codes!")
+            print("Successfully migrated phone field from VARCHAR(10) to VARCHAR(15)")
+            print("Phone numbers can now accommodate country codes!")
             
     except Exception as e:
-        print(f"❌ Migration failed: {e}")
-        print("💡 This might be normal if the table was already updated")
+        print(f" Migration failed: {e}")
+        print("This might be normal if the table was already updated")
 
 if __name__ == '__main__':
     migrate_phone_field() 
