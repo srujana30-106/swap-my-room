@@ -5,7 +5,7 @@
 ### 1. Deploy Code Changes
 ```bash
 git add .
-git commit -m "🚀 Performance fixes: eventlet workers, optimized queries, real-time notifications"
+git commit -m " Performance fixes: eventlet workers, optimized queries, real-time notifications"
 git push origin main
 ```
 
@@ -24,7 +24,7 @@ python migrate_indexes.py
 - **Database**: Added indexes and optimized queries
 - **Real-time**: Fixed notification system for room swap requests
 
-### 📊 Expected Results:
+###  Expected Results:
 - Response times: `30+ seconds → ~100-500ms`
 - WebSocket connections working properly
 - Real-time notifications for room swaps
@@ -54,7 +54,7 @@ If you still see issues:
 
 ### For Socket.IO issues:
 1. **Browser dev tools** → Network tab should show WebSocket connections
-2. **Console should show**: "✅ Using gevent async mode" or similar
+2. **Console should show**: "Using gevent async mode" or similar
 3. **Response times** should be under 1 second
 4. **Clear browser cache** and refresh
 
