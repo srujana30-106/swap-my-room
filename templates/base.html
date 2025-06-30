@@ -10,10 +10,9 @@
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome for eye icon -->
+
+    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    
-    
 </head>
 <body>
     <header>
@@ -68,27 +67,23 @@
                 notificationBox.innerText = "Connected to live updates!";
                 notificationBox.style.display = "block";
                 notificationBox.style.backgroundColor = "#28a745";
-                setTimeout(() => { 
-                    notificationBox.style.display = "none"; 
-                }, 2000);
+                setTimeout(() => { notificationBox.style.display = "none"; }, 2000);
             }
         });
 
         socket.on('connect_error', (error) => {
             console.error('Connection error:', error);
-            const notificationBox = document.getElementById("notification");
-            if (notificationBox) {
-                notificationBox.innerText = "Connection failed. Retrying...";
-                notificationBox.style.display = "block";
-                notificationBox.style.backgroundColor = "#dc3545";
-                setTimeout(() => { 
-                    notificationBox.style.display = "none"; 
-                }, 3000);
+            const box = document.getElementById("notification");
+            if (box) {
+                box.innerText = "Connection failed. Retrying...";
+                box.style.display = "block";
+                box.style.backgroundColor = "#dc3545";
+                setTimeout(() => { box.style.display = "none"; }, 3000);
             }
         });
 
         socket.on('disconnect', (reason) => {
-            console.log('Disconnected from server. Reason:', reason);
+            console.log('Disconnected. Reason:', reason);
         });
 
         socket.on('preference_update', (data) => {
@@ -97,9 +92,7 @@
                 box.innerText = data.message;
                 box.style.display = "block";
                 box.style.backgroundColor = "#007bff";
-                setTimeout(() => { 
-                    box.style.display = "none"; 
-                }, 5000);
+                setTimeout(() => { box.style.display = "none"; }, 5000);
             }
         });
 
@@ -107,7 +100,7 @@
             const box = document.getElementById("notification");
             if (box) {
                 box.innerHTML = `
-                    <strong>🏠 Room Swap Request!</strong><br/>
+                    <strong>Room Swap Request!</strong><br/>
                     ${data.message}<br/>
                     <small>Available: ${data.available} | Needed: ${data.needed}</small>
                 `;
@@ -116,13 +109,8 @@
                 box.style.border = "2px solid #155724";
                 box.style.fontWeight = "bold";
                 
-                // Keep notification visible longer for important swap requests
-                setTimeout(() => { 
-                    box.style.display = "none"; 
-                }, 8000);
-                
-                // Optional: Play notification sound
-                console.log('🔔 Swap request received:', data);
+                setTimeout(() => { box.style.display = "none"; }, 8000);
+                console.log('Swap request:', data);
             }
         });
 
@@ -133,27 +121,19 @@
                 box.innerText = "Connection error: " + data.message;
                 box.style.display = "block";
                 box.style.backgroundColor = "#dc3545";
-                setTimeout(() => { 
-                    box.style.display = "none"; 
-                }, 4000);
+                setTimeout(() => { box.style.display = "none"; }, 4000);
             }
         });
 
         // Function to emit new preference events
         function emitNewPreference(available, needed, user) {
             if (socket.connected) {
-                socket.emit('new_preference', {
-                    available: available,
-                    needed: needed,
-                    user: user
-                });
+                socket.emit('new_preference', { available, needed, user });
                 console.log('Emitted new preference:', available, '->', needed);
             } else {
                 console.warn('Socket not connected, cannot emit preference');
             }
         }
-
-        // Make emitNewPreference globally available
         window.emitNewPreference = emitNewPreference;
     </script>
 </body>
