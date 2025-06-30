@@ -21,16 +21,16 @@ def add_indexes():
             for index_sql in indexes:
                 try:
                     db.session.execute(text(index_sql))
-                    print(f"✅ Added index: {index_sql.split(' ON ')[1].split('(')[0]}")
+                    print(f"Added index: {index_sql.split(' ON ')[1].split('(')[0]}")
                 except Exception as e:
-                    print(f"⚠️  Index may already exist or error: {e}")
+                    print(f"Index may already exist or error: {e}")
             
             db.session.commit()
-            print("\n🎉 Database index migration completed successfully!")
+            print("\nDatabase index migration completed successfully!")
             
         except Exception as e:
             db.session.rollback()
-            print(f"❌ Error during migration: {e}")
+            print(f"Error during migration: {e}")
 
 if __name__ == "__main__":
     add_indexes() 
