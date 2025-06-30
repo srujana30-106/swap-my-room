@@ -18,22 +18,32 @@ db.init_app(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Configure async_mode based on environment
-# Option 1: Check for Railway (current approach)
-# async_mode = 'eventlet' if os.getenv('RAILWAY_ENVIRONMENT') else None
+# Configure async_mode based on environment with fallback
+async_mode = None
 
-# Option 2: Check for production environment variable
-# async_mode = 'eventlet' if os.getenv('FLASK_ENV') == 'production' else None
+# Check if running on Railway (multiple ways to detect)
+is_railway = (os.getenv('PORT') or 
+              os.getenv('RAILWAY_ENVIRONMENT_NAME') or 
+              os.getenv('RAILWAY_PROJECT_NAME'))
 
-# Option 3: Check for PORT environment variable (Railway sets this)
-async_mode = 'eventlet' if os.getenv('PORT') else None
-
-# Option 4: Always try eventlet, fallback to None if it fails
-# try:
-#     import eventlet
-#     async_mode = 'eventlet'
-# except ImportError:
-#     async_mode = None
+if is_railway:  # Production environment
+    try:
+        import eventlet
+        async_mode = 'eventlet'
+        print("✅ Using eventlet async mode")
+    except ImportError:
+        try:
+            import gevent
+            async_mode = 'gevent'
+            print("✅ Using gevent async mode")
+        except ImportError:
+            async_mode = 'threading'
+            print("⚠️  Using threading mode (fallback)")
+    
+    print(f"🚀 Detected Railway environment: {os.getenv('RAILWAY_ENVIRONMENT_NAME', 'production')}")
+    print(f"🏠 Project: {os.getenv('RAILWAY_PROJECT_NAME', 'Unknown')}")
+else:
+    print("🔧 Using default mode for local development")
 
 socketio = SocketIO(app, 
                  cors_allowed_origins="*",
