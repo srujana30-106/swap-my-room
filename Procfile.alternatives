@@ -1,0 +1,15 @@
+# Alternative Procfile configurations for different scenarios
+
+# Option 1: gevent (recommended for Python 3.12+)
+web: gunicorn --worker-class gevent -w 1 --bind 0.0.0.0:$PORT app:app
+
+# Option 2: eventlet (if gevent doesn't work)
+# web: gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT app:app
+
+# Option 3: Multiple gevent workers (for higher traffic)
+# web: gunicorn --worker-class gevent -w 2 --bind 0.0.0.0:$PORT app:app
+
+# Option 4: Fallback to sync workers (if async workers fail)
+# web: gunicorn --workers 1 --bind 0.0.0.0:$PORT app:app
+
+# Current active configuration uses gevent with 1 worker 

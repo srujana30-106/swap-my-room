@@ -18,8 +18,9 @@ python migrate_indexes.py
 ## What Was Fixed:
 
 ### 🔧 Critical Fixes:
-- **Procfile**: Now uses `eventlet` workers instead of sync workers
-- **Socket.IO**: Upgraded client version and added proper configuration
+- **Procfile**: Now uses `gevent` workers (Python 3.12 compatible) instead of sync workers
+- **Dependencies**: Updated eventlet to 0.35.2 and added gevent 24.2.1 as fallback
+- **Socket.IO**: Upgraded client version and added proper configuration with async fallbacks
 - **Database**: Added indexes and optimized queries
 - **Real-time**: Fixed notification system for room swap requests
 
@@ -37,10 +38,25 @@ After deployment, check browser dev tools:
 
 ## Troubleshooting:
 If you still see issues:
-1. Check Railway logs for any errors
-2. Verify environment variables are set
-3. Ensure the database migration completed
-4. Clear browser cache and refresh
+
+### For eventlet/gevent errors:
+1. **Check Railway logs** for specific error messages
+2. **Try different worker classes**:
+   - Current: `gevent` (recommended)
+   - Alternative: `eventlet` (if gevent fails)
+   - Fallback: Standard workers (slower but reliable)
+
+### For deployment issues:
+1. **Verify environment variables** are set in Railway
+2. **Check Python version** in Railway (should work with 3.11+)
+3. **Clear Railway build cache** and redeploy
+4. **Monitor startup logs** for async mode selection
+
+### For Socket.IO issues:
+1. **Browser dev tools** → Network tab should show WebSocket connections
+2. **Console should show**: "✅ Using gevent async mode" or similar
+3. **Response times** should be under 1 second
+4. **Clear browser cache** and refresh
 
 ---
 **The main fix was changing from Gunicorn sync workers to eventlet workers, which enables proper WebSocket support for Socket.IO.** 
