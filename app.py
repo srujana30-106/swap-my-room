@@ -11,151 +11,98 @@ from config import Config
 from models import db, User, RoomPreference
 
 app = Flask(__name__)
-app.config.from_object(Config)  # load configuration from config.py
+app.config.from_object(Config)
 
-# Debug environment variables
+# Debug environment
 print("=" * 60)
-print("🔍 ENVIRONMENT DEBUG INFO:")
+print("ENVIRONMENT DEBUG INFO:")
 print(f"PORT: {os.getenv('PORT')}")
 print(f"RAILWAY_ENVIRONMENT_NAME: {os.getenv('RAILWAY_ENVIRONMENT_NAME')}")
-print(f"RAILWAY_PROJECT_NAME: {os.getenv('RAILWAY_PROJECT_NAME')}")
 print("=" * 60)
 
-# Initialize extensions with app
+# Init
 db.init_app(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Configure async_mode based on environment with fallback
+# SocketIO
 async_mode = None
+is_railway = (os.getenv('PORT') or os.getenv('RAILWAY_ENVIRONMENT_NAME') or os.getenv('RAILWAY_PROJECT_NAME'))
 
-# Check if running on Railway (multiple ways to detect)
-is_railway = (os.getenv('PORT') or 
-              os.getenv('RAILWAY_ENVIRONMENT_NAME') or 
-              os.getenv('RAILWAY_PROJECT_NAME'))
-
-if is_railway:  # Production environment
-    print(" PRODUCTION ENVIRONMENT DETECTED!")
-    
-    # Try to import async libraries
-    eventlet_available = False
-    gevent_available = False
-    
+if is_railway:
+    print("PRODUCTION ENVIRONMENT DETECTED")
     try:
         import eventlet
-        eventlet_available = True
-        print(" eventlet library available")
-    except ImportError as e:
-        print(f"eventlet not available: {e}")
-    
-    try:
-        import gevent
-        gevent_available = True
-        print(" gevent library available")
-    except ImportError as e:
-        print(f"gevent not available: {e}")
-    
-    # Choose async mode
-    if gevent_available:
-        async_mode = 'gevent'
-        print("SELECTED: gevent async mode")
-    elif eventlet_available:
         async_mode = 'eventlet'
-        print("SELECTED: eventlet async mode")
-    else:
+        print("USING eventlet")
+    except ImportError:
         async_mode = 'threading'
-        print("FALLBACK: threading mode")
-    
-    print(f"Railway Environment: {os.getenv('RAILWAY_ENVIRONMENT_NAME', 'production')}")
-    print(f"Project: {os.getenv('RAILWAY_PROJECT_NAME', 'Unknown')}")
+        print("FALLBACK threading")
 else:
-    print("LOCAL DEVELOPMENT MODE")
-    async_mode = None
+    print("LOCAL DEVELOPMENT")
 
-print(f"Initializing SocketIO with async_mode: {async_mode}")
-
-socketio = SocketIO(app, 
-                 cors_allowed_origins="*",
-                 async_mode=async_mode,
-                 logger=True,
-                 engineio_logger=True,
-                 ping_timeout=60,
-                 ping_interval=25,
-                 allow_upgrades=True,
-                 transports=['websocket', 'polling'])
-
-print(f" SocketIO initialized successfully!")
-print(f" SocketIO async_mode: {socketio.async_mode}")
-print(f" SocketIO server: {type(socketio.server)}")
-print("=" * 60)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode=async_mode)
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
 with app.app_context():
     db.create_all()
 
-# Models are now in models.py
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return User.query.get(user_id)
+
 
 @app.route('/')
 def home():
     return render_template('home.html')
 
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        college_id = request.form.get('college_id').strip().upper()
+        name = request.form.get('name').strip().upper()
         password = request.form.get('password')
         email = request.form.get('email').strip()
         phone = request.form.get('phone').strip()
 
-        if not re.match(r'^[A-Z0-9]{8}$', college_id):
-            flash('College ID must be exactly 8 characters: uppercase letters and numbers only.', 'warning')
+        if not re.match(r'^[A-Z0-9]{8}$', name):
+            flash('Name must be exactly 8 characters: uppercase letters and numbers only.', 'warning')
             return redirect(url_for('register'))
 
-        try:
-            existing_id = User.query.filter_by(college_id=college_id).first()
-            existing_email = User.query.filter_by(email=email).first()
-            existing_phone = User.query.filter_by(phone=phone).first()
+        existing_name = User.query.filter_by(name=name).first()
+        existing_email = User.query.filter_by(email=email).first()
+        existing_phone = User.query.filter_by(phone=phone).first()
 
-            if existing_id and existing_email and existing_phone:
-                flash('College ID, Email, and Phone already exist. Try another.', 'danger')
-            elif existing_id:
-                flash('College ID already exists. Try another.', 'danger')
-            elif existing_email:
-                flash('Email already in use. Try another.', 'danger')
-            elif existing_phone:
-                flash('Phone number already in use. Try another.', 'danger')
-            else:
-                try:
-                    user = User(college_id=college_id, password=password, email=email, phone=phone)
-                    db.session.add(user)
-                    db.session.commit()
-                    flash('Account created. Please login.', 'success')
-                    return redirect(url_for('login'))
-                except Exception as e:
-                    db.session.rollback()
-                    print(f"Database error during user creation: {e}")
-                    flash('Something went wrong. Please try again.', 'danger')
-        except Exception as e:
-            print(f"Database connection error: {e}")
-            flash('Database connection error. Please try again later.', 'danger')
-            
+        if existing_name:
+            flash('Name already exists. Try another.', 'danger')
+        elif existing_email:
+            flash('Email already in use. Try another.', 'danger')
+        elif existing_phone:
+            flash('Phone already in use. Try another.', 'danger')
+        else:
+            user = User(name=name, password=password, email=email, phone=phone)
+            db.session.add(user)
+            db.session.commit()
+            flash('Account created. Please login.', 'success')
+            return redirect(url_for('login'))
+
     return render_template('register.html')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        college_id = request.form['college_id'].strip().upper()
+        name = request.form['name'].strip().upper()
         password = request.form['password']
-        user = User.query.filter_by(college_id=college_id, password=password).first()
+        user = User.query.filter_by(name=name, password=password).first()
         if user:
             login_user(user)
             return redirect(url_for('dashboard'))
         flash('Invalid credentials', 'danger')
     return render_template('login.html')
+
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
@@ -173,6 +120,7 @@ def forgot_password():
             flash('Email not found', 'danger')
     return render_template('forgot_password.html')
 
+
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     try:
@@ -188,8 +136,9 @@ def reset_password(token):
         db.session.commit()
         flash('Password updated! You can now login.', 'success')
         return redirect(url_for('login'))
-    
+
     return render_template('reset_password.html')
+
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 @login_required
@@ -199,7 +148,7 @@ def dashboard():
         needed = request.form['needed'].strip().upper()
 
         existing = RoomPreference.query.filter_by(
-            user_id=current_user.id,
+            user_name=current_user.name,
             available=available,
             needed=needed
         ).first()
@@ -208,7 +157,7 @@ def dashboard():
             flash('You already posted this preference.', 'warning')
         else:
             pref = RoomPreference(
-                user_id=current_user.id,
+                user_name=current_user.name,
                 available=available,
                 needed=needed,
                 selected=False
@@ -218,31 +167,24 @@ def dashboard():
             flash('Preference posted!', 'success')
 
     floor_filter = request.args.get('floor')
-    
-    # Optimized queries with proper joins and filtering
-    my_prefs = RoomPreference.query.filter_by(user_id=current_user.id).order_by(RoomPreference.created_at.desc()).all()
-
-    other_prefs_query = RoomPreference.query.options(joinedload(RoomPreference.user)).filter(RoomPreference.user_id != current_user.id)
+    my_prefs = RoomPreference.query.filter_by(user_name=current_user.name).order_by(RoomPreference.created_at.desc()).all()
+    other_prefs_query = RoomPreference.query.options(joinedload(RoomPreference.user)).filter(RoomPreference.user_name != current_user.name)
 
     if floor_filter:
-        other_prefs_query = other_prefs_query.filter(
-            RoomPreference.available.like(f'{floor_filter}%')
-        )
+        other_prefs_query = other_prefs_query.filter(RoomPreference.available.like(f'{floor_filter}%'))
 
     other_prefs = other_prefs_query.order_by(RoomPreference.created_at.desc()).limit(50).all()
 
     notifications = RoomPreference.query.options(joinedload(RoomPreference.accepted_user)) \
-        .filter(RoomPreference.user_id == current_user.id, RoomPreference.selected == True) \
-        .order_by(RoomPreference.created_at.desc()) \
-        .all()
+        .filter(RoomPreference.user_name == current_user.name, RoomPreference.selected == True) \
+        .order_by(RoomPreference.created_at.desc()).all()
 
-    return render_template(
-        'dashboard.html',
-        my_prefs=my_prefs,
-        other_prefs=other_prefs,
-        notifications=notifications,
-        floor_filter=floor_filter
-    )
+    return render_template('dashboard.html',
+                           my_prefs=my_prefs,
+                           other_prefs=other_prefs,
+                           notifications=notifications,
+                           floor_filter=floor_filter)
+
 
 @app.route('/accept/<int:pref_id>')
 @login_required
@@ -250,37 +192,36 @@ def accept(pref_id):
     pref = RoomPreference.query.options(joinedload(RoomPreference.user)).get_or_404(pref_id)
     if pref and not pref.selected:
         pref.selected = True
-        pref.accepted_by = current_user.id
+        pref.accepted_by_name = current_user.name
         db.session.commit()
-        
-        # Send real-time notification
         socketio.emit('swap_request_notification', {
-            'message': f"{current_user.college_id} wants to swap rooms with you!",
-            'requester': current_user.college_id,
+            'message': f"{current_user.name} wants to swap rooms with you!",
+            'requester': current_user.name,
             'requester_phone': current_user.phone,
-            'available': pref.needed,  # What they're offering to the requester
-            'needed': pref.available,  # What they want from the requester
-            'original_poster': pref.user.college_id,
+            'available': pref.needed,
+            'needed': pref.available,
+            'original_poster': pref.user.name,
             'timestamp': str(db.func.current_timestamp())
         })
-        
         flash('Swap request sent!', 'success')
     else:
         flash('This preference is already accepted.', 'info')
     return redirect(url_for('dashboard'))
 
+
 @app.route('/cancel/<int:pref_id>', methods=['POST'])
 @login_required
 def cancel(pref_id):
     pref = RoomPreference.query.get_or_404(pref_id)
-    if pref.selected and pref.accepted_by == current_user.id:
+    if pref.selected and pref.accepted_by_name == current_user.name:
         pref.selected = False
-        pref.accepted_by = None
+        pref.accepted_by_name = None
         db.session.commit()
         flash('Request cancelled successfully.', 'info')
     else:
         flash('You can only cancel your own requests.', 'warning')
     return redirect(url_for('dashboard'))
+
 
 @app.route('/edit/<int:pref_id>', methods=['GET', 'POST'])
 @login_required
@@ -294,6 +235,7 @@ def edit(pref_id):
         return redirect(url_for('dashboard'))
     return render_template('edit.html', pref=pref)
 
+
 @app.route('/delete/<int:pref_id>')
 @login_required
 def delete(pref_id):
@@ -303,56 +245,45 @@ def delete(pref_id):
     flash('Preference deleted.')
     return redirect(url_for('dashboard'))
 
+
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('home'))
 
-# SocketIO Event Handlers
+
 @socketio.on('connect')
 def handle_connect():
-    print(f'Client connected: {request.sid}')
-    try:
-        emit('connected', {'data': 'Connected to server!', 'status': 'success'})
-    except Exception as e:
-        print(f'Error in connect handler: {e}')
+    emit('connected', {'data': 'Connected to server!', 'status': 'success'})
+
 
 @socketio.on('disconnect')
 def handle_disconnect():
     print(f'Client disconnected: {request.sid}')
 
+
 @socketio.on('new_preference')
 def handle_new_preference(data):
-    try:
-        # Broadcast to all connected clients when a new preference is posted
-        emit('preference_update', {
-            'message': f"New room preference posted: {data.get('available', '')} -> {data.get('needed', '')}",
-            'user': data.get('user', 'Someone'),
-            'available': data.get('available', ''),
-            'needed': data.get('needed', ''),
-            'timestamp': str(db.func.current_timestamp())
-        }, broadcast=True)
-        print(f"Broadcasted new preference: {data}")
-    except Exception as e:
-        print(f'Error broadcasting preference: {e}')
-        emit('error', {'message': 'Failed to broadcast preference'})
+    emit('preference_update', {
+        'message': f"New room preference posted: {data.get('available')} -> {data.get('needed')}",
+        'user': data.get('user', 'Someone'),
+        'available': data.get('available', ''),
+        'needed': data.get('needed', ''),
+        'timestamp': str(db.func.current_timestamp())
+    }, broadcast=True)
+
 
 @socketio.on('request_sent')
 def handle_request_sent(data):
-    try:
-        # Notify specific user about room swap request
-        emit('swap_request_notification', {
-            'message': f"{data.get('requester', 'Someone')} wants to swap rooms with you!",
-            'requester': data.get('requester', ''),
-            'available': data.get('available', ''),
-            'needed': data.get('needed', ''),
-            'timestamp': str(db.func.current_timestamp())
-        }, broadcast=True)
-        print(f"Sent swap request notification: {data}")
-    except Exception as e:
-        print(f'Error sending swap request notification: {e}')
-        emit('error', {'message': 'Failed to send notification'})
+    emit('swap_request_notification', {
+        'message': f"{data.get('requester', 'Someone')} wants to swap rooms with you!",
+        'requester': data.get('requester', ''),
+        'available': data.get('available', ''),
+        'needed': data.get('needed', ''),
+        'timestamp': str(db.func.current_timestamp())
+    }, broadcast=True)
+
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
