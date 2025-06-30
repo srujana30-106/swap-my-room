@@ -1,9 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="container">
-    <h2>Welcome, {{ current_user.college_id }}</h2>
-
-    
+    <h2>Welcome, {{ current_user.name }}</h2>
 
     <!-- Notifications -->
     {% if notifications %}
@@ -12,7 +10,7 @@
         <ul>
             {% for note in notifications %}
             <li>
-                <strong>{{ note.accepted_user.college_id }}</strong>
+                <strong>{{ note.accepted_user.name }}</strong>
                 (
                 <a href="https://wa.me/91{{ note.accepted_user.phone }}" target="_blank">
                     WhatsApp: {{ note.accepted_user.phone }}
@@ -21,7 +19,6 @@
                 )
                 requested your room <strong>{{ note.available }}</strong> in exchange for <strong>{{ note.needed }}</strong>
             </li>
-
             {% endfor %}
         </ul>
     </div>
@@ -57,7 +54,7 @@
                 <td>{{ pref.needed }}</td>
                 <td>
                     {% if pref.selected %}
-                        Accepted by user ID {{ pref.accepted_by }}
+                        Accepted by user {{ pref.accepted_by_name }}
                     {% else %}
                         Not yet accepted
                     {% endif %}
@@ -82,9 +79,10 @@
             <option value="1" {% if floor_filter == '1' %}selected{% endif %}>1st Floor</option>
             <option value="2" {% if floor_filter == '2' %}selected{% endif %}>2nd Floor</option>
             <option value="3" {% if floor_filter == '3' %}selected{% endif %}>3rd Floor</option>
-            <!-- Add more options if needed -->
+            <!-- Add more if needed -->
         </select>
     </form>
+
     <!-- Other Users' Preferences -->
     <div class="preference-list">
         <h3>Available Preferences from Others {% if floor_filter %}(Filtered by Floor {{ floor_filter }}){% endif %}</h3>
@@ -98,11 +96,11 @@
             </tr>
             {% for pref in other_prefs %}
             <tr>
-                <td>{{ pref.user.college_id }}</td>
+                <td>{{ pref.user.name }}</td>
                 <td>{{ pref.available }}</td>
                 <td>{{ pref.needed }}</td>
                 <td>
-                    {% if pref.selected and pref.accepted_by == current_user.id %}
+                    {% if pref.selected and pref.accepted_by_name == current_user.name %}
                         <form action="{{ url_for('cancel', pref_id=pref.id) }}" method="POST">
                             <button class="btn" style="background-color: orange;">Cancel Request</button>
                         </form>
@@ -133,28 +131,16 @@
         available.value = available.value.trim().toUpperCase();
         needed.value = needed.value.trim().toUpperCase();
         
-        // Emit SocketIO event for real-time updates
+        // Emit SocketIO event for live update
         if (window.emitNewPreference) {
             window.emitNewPreference(
                 available.value, 
                 needed.value, 
-                '{{ current_user.college_id }}'
+                '{{ current_user.name }}'
             );
         }
         
         return true;
     }
-
-    function validateAndTrim() {
-        let available = document.getElementById('available');
-        let needed = document.getElementById('needed');
-        available.value = available.value.trim().toUpperCase();
-        needed.value = needed.value.trim().toUpperCase();
-        return true;
-    }
 </script>
 {% endblock %}
-
-
-
-
