@@ -13,6 +13,14 @@ from models import db, User, RoomPreference
 app = Flask(__name__)
 app.config.from_object(Config)  # load configuration from config.py
 
+# Debug environment variables
+print("=" * 60)
+print("🔍 ENVIRONMENT DEBUG INFO:")
+print(f"PORT: {os.getenv('PORT')}")
+print(f"RAILWAY_ENVIRONMENT_NAME: {os.getenv('RAILWAY_ENVIRONMENT_NAME')}")
+print(f"RAILWAY_PROJECT_NAME: {os.getenv('RAILWAY_PROJECT_NAME')}")
+print("=" * 60)
+
 # Initialize extensions with app
 db.init_app(app)
 login_manager = LoginManager(app)
@@ -27,23 +35,44 @@ is_railway = (os.getenv('PORT') or
               os.getenv('RAILWAY_PROJECT_NAME'))
 
 if is_railway:  # Production environment
+    print("🚀 PRODUCTION ENVIRONMENT DETECTED!")
+    
+    # Try to import async libraries
+    eventlet_available = False
+    gevent_available = False
+    
     try:
         import eventlet
-        async_mode = 'eventlet'
-        print("✅ Using eventlet async mode")
-    except ImportError:
-        try:
-            import gevent
-            async_mode = 'gevent'
-            print("✅ Using gevent async mode")
-        except ImportError:
-            async_mode = 'threading'
-            print("⚠️  Using threading mode (fallback)")
+        eventlet_available = True
+        print("✅ eventlet library available")
+    except ImportError as e:
+        print(f"❌ eventlet not available: {e}")
     
-    print(f"🚀 Detected Railway environment: {os.getenv('RAILWAY_ENVIRONMENT_NAME', 'production')}")
+    try:
+        import gevent
+        gevent_available = True
+        print("✅ gevent library available")
+    except ImportError as e:
+        print(f"❌ gevent not available: {e}")
+    
+    # Choose async mode
+    if gevent_available:
+        async_mode = 'gevent'
+        print("🎯 SELECTED: gevent async mode")
+    elif eventlet_available:
+        async_mode = 'eventlet'
+        print("🎯 SELECTED: eventlet async mode")
+    else:
+        async_mode = 'threading'
+        print("⚠️  FALLBACK: threading mode")
+    
+    print(f"🚀 Railway Environment: {os.getenv('RAILWAY_ENVIRONMENT_NAME', 'production')}")
     print(f"🏠 Project: {os.getenv('RAILWAY_PROJECT_NAME', 'Unknown')}")
 else:
-    print("🔧 Using default mode for local development")
+    print("🔧 LOCAL DEVELOPMENT MODE")
+    async_mode = None
+
+print(f"🔧 Initializing SocketIO with async_mode: {async_mode}")
 
 socketio = SocketIO(app, 
                  cors_allowed_origins="*",
@@ -51,7 +80,14 @@ socketio = SocketIO(app,
                  logger=True,
                  engineio_logger=True,
                  ping_timeout=60,
-                 ping_interval=25)
+                 ping_interval=25,
+                 allow_upgrades=True,
+                 transports=['websocket', 'polling'])
+
+print(f"✅ SocketIO initialized successfully!")
+print(f"📊 SocketIO async_mode: {socketio.async_mode}")
+print(f"🔌 SocketIO server: {type(socketio.server)}")
+print("=" * 60)
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 with app.app_context():
