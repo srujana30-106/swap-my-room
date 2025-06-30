@@ -35,7 +35,7 @@ is_railway = (os.getenv('PORT') or
               os.getenv('RAILWAY_PROJECT_NAME'))
 
 if is_railway:  # Production environment
-    print("🚀 PRODUCTION ENVIRONMENT DETECTED!")
+    print(" PRODUCTION ENVIRONMENT DETECTED!")
     
     # Try to import async libraries
     eventlet_available = False
@@ -44,35 +44,35 @@ if is_railway:  # Production environment
     try:
         import eventlet
         eventlet_available = True
-        print("✅ eventlet library available")
+        print(" eventlet library available")
     except ImportError as e:
-        print(f"❌ eventlet not available: {e}")
+        print(f"eventlet not available: {e}")
     
     try:
         import gevent
         gevent_available = True
-        print("✅ gevent library available")
+        print(" gevent library available")
     except ImportError as e:
-        print(f"❌ gevent not available: {e}")
+        print(f"gevent not available: {e}")
     
     # Choose async mode
     if gevent_available:
         async_mode = 'gevent'
-        print("🎯 SELECTED: gevent async mode")
+        print("SELECTED: gevent async mode")
     elif eventlet_available:
         async_mode = 'eventlet'
-        print("🎯 SELECTED: eventlet async mode")
+        print("SELECTED: eventlet async mode")
     else:
         async_mode = 'threading'
-        print("⚠️  FALLBACK: threading mode")
+        print("FALLBACK: threading mode")
     
-    print(f"🚀 Railway Environment: {os.getenv('RAILWAY_ENVIRONMENT_NAME', 'production')}")
-    print(f"🏠 Project: {os.getenv('RAILWAY_PROJECT_NAME', 'Unknown')}")
+    print(f"Railway Environment: {os.getenv('RAILWAY_ENVIRONMENT_NAME', 'production')}")
+    print(f"Project: {os.getenv('RAILWAY_PROJECT_NAME', 'Unknown')}")
 else:
-    print("🔧 LOCAL DEVELOPMENT MODE")
+    print("LOCAL DEVELOPMENT MODE")
     async_mode = None
 
-print(f"🔧 Initializing SocketIO with async_mode: {async_mode}")
+print(f"Initializing SocketIO with async_mode: {async_mode}")
 
 socketio = SocketIO(app, 
                  cors_allowed_origins="*",
@@ -84,9 +84,9 @@ socketio = SocketIO(app,
                  allow_upgrades=True,
                  transports=['websocket', 'polling'])
 
-print(f"✅ SocketIO initialized successfully!")
-print(f"📊 SocketIO async_mode: {socketio.async_mode}")
-print(f"🔌 SocketIO server: {type(socketio.server)}")
+print(f" SocketIO initialized successfully!")
+print(f" SocketIO async_mode: {socketio.async_mode}")
+print(f" SocketIO server: {type(socketio.server)}")
 print("=" * 60)
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
