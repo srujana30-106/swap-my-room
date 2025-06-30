@@ -2,7 +2,7 @@
 
 A Flask-based web application for college students to swap hostel rooms with real-time notifications using SocketIO.
 
-## 🚀 Features
+## Features
 
 - **User Registration & Authentication** with college ID validation
 - **Room Preference Posting** - Post available and needed rooms
@@ -12,7 +12,7 @@ A Flask-based web application for college students to swap hostel rooms with rea
 - **Floor-based Filtering** - Filter rooms by floor numbers
 - **WhatsApp Integration** - Direct contact through WhatsApp links
 
-## 🏗️ Project Structure
+##  Project Structure
 
 ```
 swap-my-room/
@@ -30,7 +30,7 @@ swap-my-room/
 └── static/            # CSS and static files
 ```
 
-## 🛠️ Setup Instructions
+##  Setup Instructions
 
 ### 1. Environment Setup
 
@@ -90,7 +90,7 @@ python app.py
 
 The application will be available at `http://localhost:5000`
 
-## 📱 Real-time Features
+##  Real-time Features
 
 The application uses **Flask-SocketIO** for real-time features:
 
@@ -105,7 +105,7 @@ The application uses **Flask-SocketIO** for real-time features:
 - `new_preference` - Emitted when posting new room preference
 - `preference_update` - Broadcasted to all users for live updates
 
-## 🗄️ Database Models
+## Database Models
 
 ### User Model
 ```python
@@ -127,7 +127,7 @@ The application uses **Flask-SocketIO** for real-time features:
 - created_at (Timestamp)
 ```
 
-## 🔧 Configuration
+##  Configuration
 
 ### Email Setup (Gmail)
 1. Go to Google Account settings
@@ -141,7 +141,7 @@ The application now uses a modular structure:
 - **database.py** - Creates tables without dropping existing ones
 - Supports PostgreSQL only (no SQLite fallback)
 
-## 🚀 Deployment
+##  Deployment
 
 ### Railway Deployment
 1. Connect your GitHub repository to Railway
@@ -156,7 +156,7 @@ MAIL_USERNAME=your-gmail@gmail.com
 MAIL_PASSWORD=your-app-password
 ```
 
-## 🔒 Security Features
+##  Security Features
 
 - **Input Validation** - College ID format validation (8 alphanumeric)
 - **Duplicate Prevention** - Prevents duplicate registrations
@@ -164,7 +164,7 @@ MAIL_PASSWORD=your-app-password
 - **Password Reset** - Secure token-based password reset
 - **CSRF Protection** - Built-in Flask protection
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 ### Database Connection Issues
 ```bash
@@ -183,11 +183,11 @@ with app.app_context(): db.create_all(); print('Database connected!')"
 2. **SocketIO not connecting** - Check CORS settings
 3. **Email not sending** - Verify Gmail app password
 
-## 📄 License
+##  License
 
 This project is licensed under the MIT License.
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create a feature branch
