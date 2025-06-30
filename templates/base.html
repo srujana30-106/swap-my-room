@@ -47,12 +47,22 @@
     </footer>
 
     <!-- Socket.IO & Live Notifications -->
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script>
-        const socket = io();
+        const socket = io({
+            transports: ['websocket', 'polling'],
+            upgrade: true,
+            rememberUpgrade: true,
+            timeout: 20000,
+            forceNew: false,
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionAttempts: 5,
+            maxReconnectionAttempts: 5
+        });
 
         socket.on('connect', () => {
-            console.log('Connected to server');
+            console.log('Connected to server with transport:', socket.io.engine.transport.name);
             const notificationBox = document.getElementById("notification");
             if (notificationBox) {
                 notificationBox.innerText = "Connected to live updates!";
@@ -64,8 +74,21 @@
             }
         });
 
-        socket.on('disconnect', () => {
-            console.log('Disconnected from server');
+        socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+            const notificationBox = document.getElementById("notification");
+            if (notificationBox) {
+                notificationBox.innerText = "Connection failed. Retrying...";
+                notificationBox.style.display = "block";
+                notificationBox.style.backgroundColor = "#dc3545";
+                setTimeout(() => { 
+                    notificationBox.style.display = "none"; 
+                }, 3000);
+            }
+        });
+
+        socket.on('disconnect', (reason) => {
+            console.log('Disconnected from server. Reason:', reason);
         });
 
         socket.on('preference_update', (data) => {
@@ -80,13 +103,54 @@
             }
         });
 
+        socket.on('swap_request_notification', (data) => {
+            const box = document.getElementById("notification");
+            if (box) {
+                box.innerHTML = `
+                    <strong>🏠 Room Swap Request!</strong><br/>
+                    ${data.message}<br/>
+                    <small>Available: ${data.available} | Needed: ${data.needed}</small>
+                `;
+                box.style.display = "block";
+                box.style.backgroundColor = "#28a745";
+                box.style.border = "2px solid #155724";
+                box.style.fontWeight = "bold";
+                
+                // Keep notification visible longer for important swap requests
+                setTimeout(() => { 
+                    box.style.display = "none"; 
+                }, 8000);
+                
+                // Optional: Play notification sound
+                console.log('🔔 Swap request received:', data);
+            }
+        });
+
+        socket.on('error', (data) => {
+            console.error('Socket error:', data);
+            const box = document.getElementById("notification");
+            if (box) {
+                box.innerText = "Connection error: " + data.message;
+                box.style.display = "block";
+                box.style.backgroundColor = "#dc3545";
+                setTimeout(() => { 
+                    box.style.display = "none"; 
+                }, 4000);
+            }
+        });
+
         // Function to emit new preference events
         function emitNewPreference(available, needed, user) {
-            socket.emit('new_preference', {
-                available: available,
-                needed: needed,
-                user: user
-            });
+            if (socket.connected) {
+                socket.emit('new_preference', {
+                    available: available,
+                    needed: needed,
+                    user: user
+                });
+                console.log('Emitted new preference:', available, '->', needed);
+            } else {
+                console.warn('Socket not connected, cannot emit preference');
+            }
         }
 
         // Make emitNewPreference globally available

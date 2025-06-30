@@ -8,10 +8,10 @@ class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
-    college_id = db.Column(db.String(20), unique=True, nullable=False)
+    college_id = db.Column(db.String(20), unique=True, nullable=False, index=True)
     password = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), unique=True, nullable=False)
-    phone = db.Column(db.String(10), unique=True, nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    phone = db.Column(db.String(10), unique=True, nullable=False, index=True)
 
     def set_password(self, new_password):
         self.password = new_password
@@ -23,12 +23,12 @@ class RoomPreference(db.Model):
     __tablename__ = 'room_preferences'
     
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    available = db.Column(db.String(20), nullable=False)
-    needed = db.Column(db.String(20), nullable=False)
-    selected = db.Column(db.Boolean, default=False)
-    accepted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    available = db.Column(db.String(20), nullable=False, index=True)
+    needed = db.Column(db.String(20), nullable=False, index=True)
+    selected = db.Column(db.Boolean, default=False, index=True)
+    accepted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp(), index=True)
 
     # Relationships
     user = relationship('User', foreign_keys=[user_id], backref='room_preferences')

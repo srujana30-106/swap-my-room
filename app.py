@@ -5,6 +5,7 @@ from sqlalchemy.orm import joinedload
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 import re
+import os
 
 from config import Config
 from models import db, User, RoomPreference
@@ -16,7 +17,31 @@ app.config.from_object(Config)  # load configuration from config.py
 db.init_app(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Configure async_mode based on environment
+# Option 1: Check for Railway (current approach)
+# async_mode = 'eventlet' if os.getenv('RAILWAY_ENVIRONMENT') else None
+
+# Option 2: Check for production environment variable
+# async_mode = 'eventlet' if os.getenv('FLASK_ENV') == 'production' else None
+
+# Option 3: Check for PORT environment variable (Railway sets this)
+async_mode = 'eventlet' if os.getenv('PORT') else None
+
+# Option 4: Always try eventlet, fallback to None if it fails
+# try:
+#     import eventlet
+#     async_mode = 'eventlet'
+# except ImportError:
+#     async_mode = None
+
+socketio = SocketIO(app, 
+                 cors_allowed_origins="*",
+                 async_mode=async_mode,
+                 logger=True,
+                 engineio_logger=True,
+                 ping_timeout=60,
+                 ping_interval=25)
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 with app.app_context():
@@ -147,20 +172,22 @@ def dashboard():
             flash('Preference posted!', 'success')
 
     floor_filter = request.args.get('floor')
-    my_prefs = RoomPreference.query.filter_by(user_id=current_user.id).all()
+    
+    # Optimized queries with proper joins and filtering
+    my_prefs = RoomPreference.query.filter_by(user_id=current_user.id).order_by(RoomPreference.created_at.desc()).all()
 
-    other_prefs_query = RoomPreference.query.filter(RoomPreference.user_id != current_user.id)
+    other_prefs_query = RoomPreference.query.options(joinedload(RoomPreference.user)).filter(RoomPreference.user_id != current_user.id)
 
     if floor_filter:
         other_prefs_query = other_prefs_query.filter(
-            RoomPreference.available.ilike(f'{floor_filter}%')
+            RoomPreference.available.like(f'{floor_filter}%')
         )
 
-    other_prefs = other_prefs_query.order_by(RoomPreference.id.desc()).all()
+    other_prefs = other_prefs_query.order_by(RoomPreference.created_at.desc()).limit(50).all()
 
     notifications = RoomPreference.query.options(joinedload(RoomPreference.accepted_user)) \
-        .filter(RoomPreference.user_id == current_user.id) \
-        .filter(RoomPreference.selected == True) \
+        .filter(RoomPreference.user_id == current_user.id, RoomPreference.selected == True) \
+        .order_by(RoomPreference.created_at.desc()) \
         .all()
 
     return render_template(
@@ -174,11 +201,23 @@ def dashboard():
 @app.route('/accept/<int:pref_id>')
 @login_required
 def accept(pref_id):
-    pref = RoomPreference.query.get_or_404(pref_id)
+    pref = RoomPreference.query.options(joinedload(RoomPreference.user)).get_or_404(pref_id)
     if pref and not pref.selected:
         pref.selected = True
         pref.accepted_by = current_user.id
         db.session.commit()
+        
+        # Send real-time notification
+        socketio.emit('swap_request_notification', {
+            'message': f"{current_user.college_id} wants to swap rooms with you!",
+            'requester': current_user.college_id,
+            'requester_phone': current_user.phone,
+            'available': pref.needed,  # What they're offering to the requester
+            'needed': pref.available,  # What they want from the requester
+            'original_poster': pref.user.college_id,
+            'timestamp': str(db.func.current_timestamp())
+        })
+        
         flash('Swap request sent!', 'success')
     else:
         flash('This preference is already accepted.', 'info')
@@ -228,7 +267,10 @@ def logout():
 @socketio.on('connect')
 def handle_connect():
     print(f'Client connected: {request.sid}')
-    emit('connected', {'data': 'Connected to server!'})
+    try:
+        emit('connected', {'data': 'Connected to server!', 'status': 'success'})
+    except Exception as e:
+        print(f'Error in connect handler: {e}')
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -236,11 +278,35 @@ def handle_disconnect():
 
 @socketio.on('new_preference')
 def handle_new_preference(data):
-    # Broadcast to all connected clients when a new preference is posted
-    emit('preference_update', {
-        'message': f"New room preference posted: {data.get('available', '')} -> {data.get('needed', '')}",
-        'user': data.get('user', 'Someone')
-    }, broadcast=True)
+    try:
+        # Broadcast to all connected clients when a new preference is posted
+        emit('preference_update', {
+            'message': f"New room preference posted: {data.get('available', '')} -> {data.get('needed', '')}",
+            'user': data.get('user', 'Someone'),
+            'available': data.get('available', ''),
+            'needed': data.get('needed', ''),
+            'timestamp': str(db.func.current_timestamp())
+        }, broadcast=True)
+        print(f"Broadcasted new preference: {data}")
+    except Exception as e:
+        print(f'Error broadcasting preference: {e}')
+        emit('error', {'message': 'Failed to broadcast preference'})
+
+@socketio.on('request_sent')
+def handle_request_sent(data):
+    try:
+        # Notify specific user about room swap request
+        emit('swap_request_notification', {
+            'message': f"{data.get('requester', 'Someone')} wants to swap rooms with you!",
+            'requester': data.get('requester', ''),
+            'available': data.get('available', ''),
+            'needed': data.get('needed', ''),
+            'timestamp': str(db.func.current_timestamp())
+        }, broadcast=True)
+        print(f"Sent swap request notification: {data}")
+    except Exception as e:
+        print(f'Error sending swap request notification: {e}')
+        emit('error', {'message': 'Failed to send notification'})
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
