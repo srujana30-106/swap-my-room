@@ -189,3 +189,108 @@ table tr:nth-child(even) {
 .sent-request td {
     background-color: #e0ffe0; /* Light green */
 }
+
+@media (max-width: 600px) {
+    .container {
+        padding: 10px;
+        width: 100vw;
+        box-sizing: border-box;
+    }
+    .form-container, .preference-list {
+        padding: 10px;
+        border-radius: 8px;
+        box-shadow: none;
+        margin: 10px auto;
+        width: 100%;
+        min-width: 0;
+    }
+    h1, h2, h3 {
+        font-size: 20px;
+        margin-bottom: 10px;
+    }
+    table, thead, tbody, th, td, tr {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    thead {
+        display: none;
+    }
+    table tr {
+        margin-bottom: 12px;
+        border-bottom: 1px solid #ddd;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        padding: 8px 0;
+    }
+    table td {
+        text-align: left;
+        padding: 8px 4px;
+        font-size: 15px;
+        border: none;
+        position: relative;
+        min-width: 0;
+    }
+    table td:before {
+        content: attr(data-label);
+        font-weight: bold;
+        display: block;
+        margin-bottom: 2px;
+        color: #555;
+        font-size: 13px;
+    }
+    input, select, button {
+        width: 100%;
+        font-size: 16px;
+        margin-bottom: 12px;
+        padding: 12px 10px;
+        border-radius: 6px;
+        box-sizing: border-box;
+    }
+    button, .btn, input[type="submit"] {
+        width: 100%;
+        font-size: 17px;
+        padding: 14px 0;
+        margin-top: 8px;
+        margin-bottom: 16px;
+        border-radius: 6px;
+        min-height: 48px;
+    }
+    .input-wrapper {
+        margin-bottom: 14px;
+    }
+    .preference-list {
+        overflow-x: auto;
+    }
+}
+
+@media (max-width: 400px) {
+    h1, h2, h3 {
+        font-size: 17px;
+    }
+    input, select, button {
+        font-size: 15px;
+        padding: 10px 8px;
+    }
+    button, .btn, input[type="submit"] {
+        font-size: 15px;
+        padding: 12px 0;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 350px) {
+    h1, h2, h3 {
+        font-size: 15px;
+    }
+    input, select, button {
+        font-size: 13px;
+        padding: 8px 6px;
+    }
+    button, .btn, input[type="submit"] {
+        font-size: 13px;
+        padding: 10px 0;
+        min-height: 38px;
+    }
+}
