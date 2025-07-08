@@ -27,6 +27,7 @@ class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
     college_id = db.Column(db.String(20), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
@@ -40,11 +41,17 @@ class RoomPreference(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     available = db.Column(db.String(20))
     needed = db.Column(db.String(20))
-    selected = db.Column(db.Boolean, default=False)
-    accepted_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-
     user = relationship('User', foreign_keys=[user_id])
-    accepted_user = relationship('User', foreign_keys=[accepted_by], post_update=True)
+    requests = relationship('SwapRequest', back_populates='preference', cascade='all, delete-orphan')
+
+class SwapRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    preference_id = db.Column(db.Integer, db.ForeignKey('room_preference.id'))
+    requester_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    status = db.Column(db.String(20), default='pending')  # pending, committed, rejected
+
+    requester = relationship('User', foreign_keys=[requester_id])
+    preference = relationship('RoomPreference', foreign_keys=[preference_id], back_populates='requests')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -56,39 +63,44 @@ def home():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    errors = {}
+    values = {}
     if request.method == 'POST':
-        college_id = request.form.get('college_id').strip().upper()
-        password = request.form.get('password')
-        email = request.form.get('email').strip()
-        phone = request.form.get('phone').strip()
+        name = request.form.get('name', '').strip()
+        college_id = request.form.get('college_id', '').strip().upper()
+        email = request.form.get('email', '').strip()
+        phone = request.form.get('phone', '').strip()
+        password = request.form.get('password', '')
 
-        if not re.match(r'^[A-Z0-9]{8}$', college_id):
-            flash('College ID must be exactly 8 characters: uppercase letters and numbers only.', 'warning')
-            return redirect(url_for('register'))
+        values = {'name': name, 'college_id': college_id, 'email': email, 'phone': phone}
 
         existing_id = User.query.filter_by(college_id=college_id).first()
         existing_email = User.query.filter_by(email=email).first()
         existing_phone = User.query.filter_by(phone=phone).first()
 
-        if existing_id and existing_email and existing_phone:
-            flash('College ID, Email, and Phone already exist. Try another.', 'danger')
-        elif existing_id:
-            flash('College ID already exists. Try another.', 'danger')
-        elif existing_email:
-            flash('Email already in use. Try another.', 'danger')
-        elif existing_phone:
-            flash('Phone number already in use. Try another.', 'danger')
-        else:
-            try:
-                user = User(college_id=college_id, password=password, email=email, phone=phone)
-                db.session.add(user)
-                db.session.commit()
-                flash('Account created. Please login.', 'success')
-                return redirect(url_for('login'))
-            except Exception:
-                db.session.rollback()
-                flash('Something went wrong. Please try again.', 'danger')
-    return render_template('register.html')
+        if existing_id:
+            errors['college_id'] = 'College ID already exists. Please use another.'
+            values['college_id'] = ''
+        if existing_email:
+            errors['email'] = 'Email already exists. Please use another.'
+            values['email'] = ''
+        if existing_phone:
+            errors['phone'] = 'Phone number already exists. Please use another.'
+            values['phone'] = ''
+
+        if errors:
+            flash('Some fields already exist. Please correct them and try again.', 'danger')
+            return render_template('register.html', errors=errors, values=values)
+        try:
+            user = User(name=name, college_id=college_id, password=password, email=email, phone=phone)
+            db.session.add(user)
+            db.session.commit()
+            flash('Account created. Please login.', 'success')
+            return redirect(url_for('login'))
+        except Exception:
+            db.session.rollback()
+            flash('Something went wrong. Please try again.', 'danger')
+    return render_template('register.html', errors=errors, values=values)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -155,8 +167,7 @@ def dashboard():
             pref = RoomPreference(
                 user_id=current_user.id,
                 available=available,
-                needed=needed,
-                selected=False
+                needed=needed
             )
             db.session.add(pref)
             db.session.commit()
@@ -174,16 +185,10 @@ def dashboard():
 
     other_prefs = other_prefs_query.order_by(RoomPreference.id.desc()).all()
 
-    notifications = RoomPreference.query.options(joinedload(RoomPreference.accepted_user)) \
-        .filter(RoomPreference.user_id == current_user.id) \
-        .filter(RoomPreference.selected == True) \
-        .all()
-
     return render_template(
         'dashboard.html',
         my_prefs=my_prefs,
         other_prefs=other_prefs,
-        notifications=notifications,
         floor_filter=floor_filter
     )
 
@@ -191,26 +196,64 @@ def dashboard():
 @login_required
 def accept(pref_id):
     pref = RoomPreference.query.get_or_404(pref_id)
-    if pref and not pref.selected:
-        pref.selected = True
-        pref.accepted_by = current_user.id
+    # Check if already requested by this user
+    existing_request = SwapRequest.query.filter_by(preference_id=pref.id, requester_id=current_user.id, status='pending').first()
+    if not existing_request:
+        swap_request = SwapRequest(preference_id=pref.id, requester_id=current_user.id, status='pending')
+        db.session.add(swap_request)
         db.session.commit()
         flash('Swap request sent!', 'success')
     else:
-        flash('This preference is already accepted.', 'info')
+        flash('You have already sent a request for this preference.', 'info')
     return redirect(url_for('dashboard'))
 
-@app.route('/cancel/<int:pref_id>', methods=['POST'])
+@app.route('/commit_request/<int:req_id>', methods=['POST'])
 @login_required
-def cancel(pref_id):
-    pref = RoomPreference.query.get_or_404(pref_id)
-    if pref.selected and pref.accepted_by == current_user.id:
-        pref.selected = False
-        pref.accepted_by = None
+def commit_request(req_id):
+    req = SwapRequest.query.get_or_404(req_id)
+    pref = req.preference
+    if pref.user_id == current_user.id and req.status == 'pending':
+        # Mark this request as committed
+        req.status = 'committed'
+        # Delete the preference and all requests for it
+        for r in pref.requests:
+            db.session.delete(r)
+        db.session.delete(pref)
+        # Optionally, delete the requester's own preference
+        requester_pref = RoomPreference.query.filter_by(user_id=req.requester_id).first()
+        if requester_pref:
+            for r in requester_pref.requests:
+                db.session.delete(r)
+            db.session.delete(requester_pref)
+        db.session.commit()
+        flash('Swap committed and preferences removed.', 'success')
+    else:
+        flash('Invalid commit action.', 'danger')
+    return redirect(url_for('dashboard'))
+
+@app.route('/reject_request/<int:req_id>', methods=['POST'])
+@login_required
+def reject_request(req_id):
+    req = SwapRequest.query.get_or_404(req_id)
+    pref = req.preference
+    if pref.user_id == current_user.id and req.status == 'pending':
+        req.status = 'rejected'
+        db.session.commit()
+        flash('Request marked as not interested.', 'info')
+    else:
+        flash('Invalid reject action.', 'danger')
+    return redirect(url_for('dashboard'))
+
+@app.route('/cancel/<int:req_id>', methods=['POST'])
+@login_required
+def cancel(req_id):
+    req = SwapRequest.query.get_or_404(req_id)
+    if req.requester_id == current_user.id and req.status == 'pending':
+        db.session.delete(req)
         db.session.commit()
         flash('Request cancelled successfully.', 'info')
     else:
-        flash('You can only cancel your own requests.', 'warning')
+        flash('You can only cancel your own pending requests.', 'warning')
     return redirect(url_for('dashboard'))
 
 @app.route('/edit/<int:pref_id>', methods=['GET', 'POST'])
@@ -226,7 +269,7 @@ def edit(pref_id):
     return render_template('edit.html', pref=pref)
 
 @app.route('/delete/<int:pref_id>')
-@login_required
+@login_required 
 def delete(pref_id):
     pref = RoomPreference.query.get_or_404(pref_id)
     db.session.delete(pref)

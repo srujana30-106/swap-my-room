@@ -3,15 +3,15 @@
 {% block content %}
 <div class="form-container">
     <h2>Login to Your Account</h2>
-    <form method="POST">
+    <form method="POST" autocomplete="off">
         <!-- College ID -->
         <div class="input-wrapper">
-            <input type="text" name="college_id" placeholder="College ID" required>
+            <input type="text" name="college_id" placeholder="College ID" required autocomplete="nope">
         </div>
 
         <!-- Password with eye icon -->
         <div class="input-wrapper">
-            <input type="password" name="password" id="login-password" placeholder="Password" required>
+            <input type="password" name="password" id="login-password" placeholder="Password" required autocomplete="new-password">
             <i id="login-icon" class="fa-solid fa-eye" onclick="togglePassword('login-password', 'login-icon')"></i>
         </div>
 

@@ -3,30 +3,6 @@
 <div class="container">
     <h2>Welcome, {{ current_user.college_id }}</h2>
 
-    
-
-    <!-- Notifications -->
-    {% if notifications %}
-    <div class="preference-list">
-        <h3>Notifications</h3>
-        <ul>
-            {% for note in notifications %}
-            <li>
-                <strong>{{ note.accepted_user.college_id }}</strong>
-                (
-                <a href="https://wa.me/91{{ note.accepted_user.phone }}" target="_blank">
-                    WhatsApp: {{ note.accepted_user.phone }}
-                    <i class="fab fa-whatsapp" style="color: green;"></i>
-                </a>
-                )
-                requested your room <strong>{{ note.available }}</strong> in exchange for <strong>{{ note.needed }}</strong>
-            </li>
-
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
-
     <!-- Toggle Form Button -->
     <button id="toggleFormBtn" class="btn">Post Your Preference</button>
 
@@ -56,21 +32,25 @@
                 <td>{{ pref.available }}</td>
                 <td>{{ pref.needed }}</td>
                 <td>
-                    {% if pref.selected %}
-                        Accepted by user ID {{ pref.accepted_by }}
+                    {% set pending_requests = pref.requests|selectattr('status', 'equalto', 'pending')|list %}
+                    {% if pending_requests|length > 0 %}
+                        Requests Received ({{ pending_requests|length }})
+                        <button class="btn" onclick="showRequestsModal({{ pref.id }})">View Requests</button>
                     {% else %}
                         Not yet accepted
                     {% endif %}
                 </td>
                 <td>
-                    <a class="btn" href="{{ url_for('edit', pref_id=pref.id) }}">Edit</a>
-                    <a class="btn" href="{{ url_for('delete', pref_id=pref.id) }}">Delete</a>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <a class="btn" href="{{ url_for('edit', pref_id=pref.id) }}">Edit</a>
+                        <a class="btn" href="{{ url_for('delete', pref_id=pref.id) }}">Delete</a>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
         </table>
         {% else %}
-        <p>You haven’t posted any preferences yet.</p>
+        <p>You haven't posted any preferences yet.</p>
         {% endif %}
     </div>
         
@@ -79,10 +59,11 @@
         <label for="floor">Filter by Floor:</label>
         <select name="floor" id="floor" onchange="this.form.submit()">
             <option value="">All Floors</option>
-            <option value="1" {% if floor_filter == '1' %}selected{% endif %}>1st Floor</option>
-            <option value="2" {% if floor_filter == '2' %}selected{% endif %}>2nd Floor</option>
-            <option value="3" {% if floor_filter == '3' %}selected{% endif %}>3rd Floor</option>
-            <!-- Add more options if needed -->
+            <option value="G" {% if floor_filter == 'G' %}selected{% endif %}>Ground Floor</option>
+            <option value="1" {% if floor_filter == '1' %}selected{% endif %}>First Floor</option>
+            <option value="2" {% if floor_filter == '2' %}selected{% endif %}>Second Floor</option>
+            <option value="3" {% if floor_filter == '3' %}selected{% endif %}>Third Floor</option>
+            <option value="4" {% if floor_filter == '4' %}selected{% endif %}>Fourth Floor</option>
         </select>
     </form>
     <!-- Other Users' Preferences -->
@@ -91,6 +72,7 @@
         {% if other_prefs %}
         <table>
             <tr>
+                <th>Name</th>
                 <th>User</th>
                 <th>Available</th>
                 <th>Needed</th>
@@ -98,16 +80,21 @@
             </tr>
             {% for pref in other_prefs %}
             <tr>
+                <td>{{ pref.user.name }}</td>
                 <td>{{ pref.user.college_id }}</td>
                 <td>{{ pref.available }}</td>
                 <td>{{ pref.needed }}</td>
                 <td>
-                    {% if pref.selected and pref.accepted_by == current_user.id %}
-                        <form action="{{ url_for('cancel', pref_id=pref.id) }}" method="POST">
+                    {% set sent_request = pref.requests|selectattr('requester_id', 'equalto', current_user.id)|list %}
+                    {% set pending_request = sent_request|selectattr('status', 'equalto', 'pending')|list %}
+                    {% set rejected_request = sent_request|selectattr('status', 'equalto', 'rejected')|list %}
+                    {% if pending_request|length > 0 %}
+                        <span style="color: orange;">Request Sent</span>
+                        <form action="{{ url_for('cancel', req_id=pending_request[0].id) }}" method="POST" style="display:inline;">
                             <button class="btn" style="background-color: orange;">Cancel Request</button>
                         </form>
-                    {% elif pref.selected %}
-                        <span style="color: gray;">Already Accepted</span>
+                    {% elif rejected_request|length > 0 %}
+                        <span style="color: red;">Request Failed</span>
                     {% else %}
                         <a class="btn" href="{{ url_for('accept', pref_id=pref.id) }}">Send Request</a>
                     {% endif %}
@@ -121,6 +108,21 @@
     </div>
 </div>
 
+<!-- Modal for viewing requests -->
+<div id="requestsModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div class="modal-content" style="background:#fff; margin:5% auto; padding:20px; border-radius:8px; max-width:600px; position:relative;">
+        <span class="close" onclick="closeRequestsModal()" style="position:absolute; top:10px; right:20px; font-size:28px; cursor:pointer;">&times;</span>
+        <h3>Requests for Your Room</h3>
+        <table id="requestsTable">
+            <tr>
+                <th>Name</th>
+                <th>WhatsApp</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </table>
+    </div>
+</div>
 <script>
     document.getElementById('toggleFormBtn').addEventListener('click', () => {
         const form = document.getElementById('preferenceForm');
@@ -133,6 +135,51 @@
         available.value = available.value.trim().toUpperCase();
         needed.value = needed.value.trim().toUpperCase();
         return true;
+    }
+
+    let allRequests = {};
+    {% for pref in my_prefs %}
+        allRequests[{{ pref.id }}] = [
+            {% for req in pref.requests if req.status == 'pending' or req.status == 'rejected' %}
+                {
+                    id: {{ req.id }},
+                    name: "{{ req.requester.name }}",
+                    phone: "{{ req.requester.phone }}",
+                    status: "{{ req.status }}"
+                },
+            {% endfor %}
+        ];
+    {% endfor %}
+    function showRequestsModal(prefId) {
+        const modal = document.getElementById('requestsModal');
+        const table = document.getElementById('requestsTable');
+        // Remove old rows
+        while(table.rows.length > 1) table.deleteRow(1);
+        // Add new rows
+        (allRequests[prefId] || []).forEach(req => {
+            let row = table.insertRow();
+            row.insertCell(0).innerText = req.name;
+            // Build WhatsApp link with default message in JS
+            const message = encodeURIComponent(`Hi ${req.name}, I am interested in swapping my room via Hostel Room Swap. Let me know if you are interested!`);
+            row.insertCell(1).innerHTML = `<a href='https://wa.me/91${req.phone}?text=${message}' target='_blank'>${req.phone}</a>`;
+            row.insertCell(2).innerText = req.status === 'rejected' ? 'Not Interested' : 'Pending';
+            let actions = '';
+            if(req.status === 'pending') {
+                actions += `<form style='display:inline;' method='POST' action='/commit_request/${req.id}'><button class='btn' style='background-color:green;'>Commit</button></form>`;
+                actions += `<form style='display:inline;' method='POST' action='/reject_request/${req.id}'><button class='btn' style='background-color:red;'>Not Interested</button></form>`;
+            }
+            row.insertCell(3).innerHTML = actions;
+        });
+        modal.style.display = 'block';
+    }
+    function closeRequestsModal() {
+        document.getElementById('requestsModal').style.display = 'none';
+    }
+    window.onclick = function(event) {
+        const modal = document.getElementById('requestsModal');
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
     }
 </script>
 {% endblock %}

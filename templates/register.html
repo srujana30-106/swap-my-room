@@ -3,31 +3,40 @@
 {% block content %}
 <div class="form-container">
     <h2>Create an Account</h2>
-    <form method="POST">
+    <form method="POST" autocomplete="off">
+        <!-- Name -->
+        <div class="input-wrapper">
+            <input type="text" name="name" placeholder="Full Name" value="{{ values.name or '' }}" required autocomplete="nope">
+        </div>
         <!-- College ID -->
         <div class="input-wrapper">
-            <input type="text" name="college_id" placeholder="College ID (e.g., RGUKT123)" required>
+            <input type="text" name="college_id" placeholder="College ID (ROXXXXXX)" value="{{ values.college_id or '' }}" required autocomplete="nope" style="{% if errors.college_id %}border:1px solid red;{% endif %}">
+            {% if errors.college_id %}
+                <div style="color:red; font-size:12px;">{{ errors.college_id }}</div>
+            {% endif %}
         </div>
-
         <!-- Email -->
         <div class="input-wrapper">
-            <input type="email" name="email" placeholder="Email" required>
+            <input type="email" name="email" placeholder="Email" value="{{ values.email or '' }}" required autocomplete="nope" style="{% if errors.email %}border:1px solid red;{% endif %}">
+            {% if errors.email %}
+                <div style="color:red; font-size:12px;">{{ errors.email }}</div>
+            {% endif %}
         </div>
-
         <!-- Phone -->
         <div class="input-wrapper">
-            <input type="text" name="phone" placeholder="WhatsApp Number" required>
+            <input type="text" name="phone" placeholder="WhatsApp Number" value="{{ values.phone or '' }}" required autocomplete="nope" style="{% if errors.phone %}border:1px solid red;{% endif %}">
+            {% if errors.phone %}
+                <div style="color:red; font-size:12px;">{{ errors.phone }}</div>
+            {% endif %}
         </div>
-
         <!-- Password with eye icon -->
         <div class="input-wrapper">
-            <input type="password" name="password" id="register-password" placeholder="Password" required>
+            <input type="password" name="password" id="register-password" placeholder="Password" required autocomplete="new-password">
             <i id="register-icon" class="fa-solid fa-eye" onclick="togglePassword('register-password', 'register-icon')"></i>
         </div>
-
         <button type="submit">Register</button>
     </form>
-    <p>Already have an account? <a href="/login">Login</a></p>
+    <p>Already have an account? <a href="/login" style="color:#007bff;text-decoration:underline;">Login</a></p>
 </div>
 
 <script>
