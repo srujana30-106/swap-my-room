@@ -50,9 +50,9 @@
             </tr>
             {% for pref in my_prefs %}
             <tr>
-                <td>{{ pref.available }}</td>
-                <td>{{ pref.needed }}</td>
-                <td>
+                <td data-label="Available">{{ pref.available }}</td>
+                <td data-label="Needed">{{ pref.needed }}</td>
+                <td data-label="Status">
                     {% set pending_requests = pref.requests|selectattr('status', 'equalto', 'pending')|list %}
                     {% if pending_requests|length > 0 %}
                         Requests Received ({{ pending_requests|length }})
@@ -61,7 +61,7 @@
                         Not yet accepted
                     {% endif %}
                 </td>
-                <td>
+                <td data-label="Actions">
                     <div style="display: flex; gap: 10px; justify-content: center;">
                         <a class="btn" href="{{ url_for('edit', pref_id=pref.id) }}">Edit</a>
                         <a class="btn" href="{{ url_for('delete', pref_id=pref.id) }}">Delete</a>
@@ -99,10 +99,10 @@
             </tr>
             {% for pref in other_prefs %}
             <tr>
-                <td>{{ pref.user.name }}</td>
-                <td>{{ pref.available }}</td>
-                <td>{{ pref.needed }}</td>
-                <td>
+                <td data-label="Name">{{ pref.user.name }}</td>
+                <td data-label="Available">{{ pref.available }}</td>
+                <td data-label="Needed">{{ pref.needed }}</td>
+                <td data-label="Action">
                     {% set sent_request = pref.requests|selectattr('requester_id', 'equalto', current_user.id)|list %}
                     {% set pending_request = sent_request|selectattr('status', 'equalto', 'pending')|list %}
                     {% set rejected_request = sent_request|selectattr('status', 'equalto', 'rejected')|list %}
