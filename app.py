@@ -1,65 +1,62 @@
 from flask import Flask, render_template, redirect, request, url_for, flash
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
-from sqlalchemy.orm import relationship, joinedload
+from sqlalchemy.orm import joinedload
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 import re
+import os
 
-from config import Config  # import config
+from config import Config
+from models import db, User, RoomPreference, SwapRequest  # type: ignore
 
 app = Flask(__name__)
-app.config.from_object(Config)  # load configuration from config.py
+app.config.from_object(Config)
 
-# Extensions
-db = SQLAlchemy(app)
+# Debug environment
+print("=" * 60)
+print("ENVIRONMENT DEBUG INFO:")
+print(f"PORT: {os.getenv('PORT')}")
+print(f"RAILWAY_ENVIRONMENT_NAME: {os.getenv('RAILWAY_ENVIRONMENT_NAME')}")
+print("=" * 60)
+
+# Init
+db.init_app(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-socketio = SocketIO(app)
+
+# SocketIO
+async_mode = 'threading'  # Default to threading if not set by environment
+is_railway = (os.getenv('PORT') or os.getenv('RAILWAY_ENVIRONMENT_NAME') or os.getenv('RAILWAY_PROJECT_NAME'))
+
+if is_railway:
+    print("PRODUCTION ENVIRONMENT DETECTED")
+    try:
+        import eventlet
+        async_mode = 'eventlet'
+        print("USING eventlet")
+    except ImportError:
+        async_mode = 'threading'
+        print("FALLBACK threading")
+else:
+    print("LOCAL DEVELOPMENT")
+
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode=async_mode)
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
 with app.app_context():
     db.create_all()
 
-# Models
-class User(UserMixin, db.Model):
-    __tablename__ = 'users'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    college_id = db.Column(db.String(20), unique=True, nullable=False)
-    password = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), unique=True, nullable=False)
-    phone = db.Column(db.String(10), unique=True, nullable=False)  
-
-    def set_password(self, new_password):
-        self.password = new_password
-
-class RoomPreference(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    available = db.Column(db.String(20))
-    needed = db.Column(db.String(20))
-    user = relationship('User', foreign_keys=[user_id])
-    requests = relationship('SwapRequest', back_populates='preference', cascade='all, delete-orphan')
-
-class SwapRequest(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    preference_id = db.Column(db.Integer, db.ForeignKey('room_preference.id'))
-    requester_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    status = db.Column(db.String(20), default='pending')  # pending, committed, rejected
-
-    requester = relationship('User', foreign_keys=[requester_id])
-    preference = relationship('RoomPreference', foreign_keys=[preference_id], back_populates='requests')
-
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return User.query.get(user_id)
+
 
 @app.route('/')
 def home():
     return render_template('home.html')
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -74,11 +71,11 @@ def register():
 
         values = {'name': name, 'college_id': college_id, 'email': email, 'phone': phone}
 
-        existing_id = User.query.filter_by(college_id=college_id).first()
+        existing_college_id = User.query.filter_by(college_id=college_id).first()
         existing_email = User.query.filter_by(email=email).first()
         existing_phone = User.query.filter_by(phone=phone).first()
 
-        if existing_id:
+        if existing_college_id:
             errors['college_id'] = 'College ID already exists. Please use another.'
             values['college_id'] = ''
         if existing_email:
@@ -92,7 +89,13 @@ def register():
             flash('Some fields already exist. Please correct them and try again.', 'danger')
             return render_template('register.html', errors=errors, values=values)
         try:
-            user = User(name=name, college_id=college_id, password=password, email=email, phone=phone)
+            user = User(  # type: ignore
+                name=name,
+                college_id=college_id,
+                password=password,
+                email=email,
+                phone=phone
+            )
             db.session.add(user)
             db.session.commit()
             flash('Account created. Please login.', 'success')
@@ -102,17 +105,19 @@ def register():
             flash('Something went wrong. Please try again.', 'danger')
     return render_template('register.html', errors=errors, values=values)
 
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        college_id = request.form['college_id'].strip().upper()
-        password = request.form['password']
+        college_id = request.form.get('college_id', '').strip().upper()
+        password = request.form.get('password', '')
         user = User.query.filter_by(college_id=college_id, password=password).first()
         if user:
             login_user(user)
             return redirect(url_for('dashboard'))
         flash('Invalid credentials', 'danger')
     return render_template('login.html')
+
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
@@ -130,6 +135,7 @@ def forgot_password():
             flash('Email not found', 'danger')
     return render_template('forgot_password.html')
 
+
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     try:
@@ -141,12 +147,14 @@ def reset_password(token):
     if request.method == 'POST':
         user = User.query.filter_by(email=email).first()
         new_password = request.form['password']
-        user.set_password(new_password)
-        db.session.commit()
-        flash('Password updated! You can now login.', 'success')
-        return redirect(url_for('login'))
-    
+        if user:
+            user.password = new_password
+            db.session.commit()
+            flash('Password updated! You can now login.', 'success')
+            return redirect(url_for('login'))
+
     return render_template('reset_password.html')
+
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 @login_required
@@ -164,7 +172,7 @@ def dashboard():
         if existing:
             flash('You already posted this preference.', 'warning')
         else:
-            pref = RoomPreference(
+            pref = RoomPreference(  # type: ignore
                 user_id=current_user.id,
                 available=available,
                 needed=needed
@@ -173,24 +181,22 @@ def dashboard():
             db.session.commit()
             flash('Preference posted!', 'success')
 
-    floor_filter = request.args.get('floor')
-    my_prefs = RoomPreference.query.filter_by(user_id=current_user.id).all()
+    search_needed = request.args.get('search_needed', '').strip().upper()
+    my_prefs = RoomPreference.query.filter_by(user_id=current_user.id).order_by(RoomPreference.id.desc()).all()
+    other_prefs_query = RoomPreference.query.options(joinedload(RoomPreference.user)).filter(RoomPreference.user_id != current_user.id)
 
-    other_prefs_query = RoomPreference.query.filter(RoomPreference.user_id != current_user.id)
+    if search_needed:
+        other_prefs_query = other_prefs_query.filter(RoomPreference.available.ilike(f'%{search_needed}%'))
 
-    if floor_filter:
-        other_prefs_query = other_prefs_query.filter(
-            RoomPreference.available.ilike(f'{floor_filter}%')
-        )
-
-    other_prefs = other_prefs_query.order_by(RoomPreference.id.desc()).all()
+    other_prefs = other_prefs_query.order_by(RoomPreference.id.desc()).limit(50).all()
 
     return render_template(
         'dashboard.html',
         my_prefs=my_prefs,
         other_prefs=other_prefs,
-        floor_filter=floor_filter
+        search_needed=search_needed
     )
+
 
 @app.route('/accept/<int:pref_id>')
 @login_required
@@ -199,13 +205,27 @@ def accept(pref_id):
     # Check if already requested by this user
     existing_request = SwapRequest.query.filter_by(preference_id=pref.id, requester_id=current_user.id, status='pending').first()
     if not existing_request:
-        swap_request = SwapRequest(preference_id=pref.id, requester_id=current_user.id, status='pending')
+        swap_request = SwapRequest(  # type: ignore
+            preference_id=pref.id,
+            requester_id=current_user.id,
+            status='pending'
+        )
         db.session.add(swap_request)
         db.session.commit()
+        socketio.emit('swap_request_notification', {
+            'message': f"{current_user.name} wants to swap rooms with you!",
+            'requester': current_user.name,
+            'requester_phone': current_user.phone,
+            'available': pref.needed,
+            'needed': pref.available,
+            'original_poster': pref.user.name,
+            'timestamp': str(db.func.current_timestamp())
+        })
         flash('Swap request sent!', 'success')
     else:
         flash('You have already sent a request for this preference.', 'info')
     return redirect(url_for('dashboard'))
+
 
 @app.route('/commit_request/<int:req_id>', methods=['POST'])
 @login_required
@@ -231,6 +251,7 @@ def commit_request(req_id):
         flash('Invalid commit action.', 'danger')
     return redirect(url_for('dashboard'))
 
+
 @app.route('/reject_request/<int:req_id>', methods=['POST'])
 @login_required
 def reject_request(req_id):
@@ -244,6 +265,7 @@ def reject_request(req_id):
         flash('Invalid reject action.', 'danger')
     return redirect(url_for('dashboard'))
 
+
 @app.route('/cancel/<int:req_id>', methods=['POST'])
 @login_required
 def cancel(req_id):
@@ -255,6 +277,7 @@ def cancel(req_id):
     else:
         flash('You can only cancel your own pending requests.', 'warning')
     return redirect(url_for('dashboard'))
+
 
 @app.route('/edit/<int:pref_id>', methods=['GET', 'POST'])
 @login_required
@@ -268,6 +291,7 @@ def edit(pref_id):
         return redirect(url_for('dashboard'))
     return render_template('edit.html', pref=pref)
 
+
 @app.route('/delete/<int:pref_id>')
 @login_required 
 def delete(pref_id):
@@ -277,15 +301,45 @@ def delete(pref_id):
     flash('Preference deleted.')
     return redirect(url_for('dashboard'))
 
+
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('home'))
 
+
 @socketio.on('connect')
 def handle_connect():
-    emit('connected', {'data': 'Connected'})
+    emit('connected', {'data': 'Connected to server!', 'status': 'success'})
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
+
+
+@socketio.on('new_preference')
+def handle_new_preference(data):
+    emit('preference_update', {
+        'message': f"New room preference posted: {data.get('available')} -> {data.get('needed')}",
+        'user': data.get('user', 'Someone'),
+        'available': data.get('available', ''),
+        'needed': data.get('needed', ''),
+        'timestamp': str(db.func.current_timestamp())
+    }, broadcast=True)
+
+
+@socketio.on('request_sent')
+def handle_request_sent(data):
+    emit('swap_request_notification', {
+        'message': f"{data.get('requester', 'Someone')} wants to swap rooms with you!",
+        'requester': data.get('requester', ''),
+        'available': data.get('available', ''),
+        'needed': data.get('needed', ''),
+        'timestamp': str(db.func.current_timestamp())
+    }, broadcast=True)
+
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)

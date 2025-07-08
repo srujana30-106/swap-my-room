@@ -12,7 +12,7 @@
         <a href="/accept/{{p.id}}">Accept Swap</a>
       {% else %}
         {% set accepter = users.query.get(p.accepted_by) %}
-        <p>Already accepted by {{accepter.college_id}} ({{accepter.email}})</p>
+        <p>Already accepted by {{accepter.name}} ({{accepter.email}})</p>
       {% endif %}
     </li>
   {% endfor %}

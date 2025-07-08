@@ -3,7 +3,7 @@
 <div class="container">
     <h2>Edit Your Preference</h2>
 
-    <form method="POST">
+    <form method="POST" onsubmit="return validateAndTrim();">
         <div class="form-group">
             <label for="available">Available Room No.:</label>
             <input type="text" name="available" id="available" value="{{ pref.available }}" required>
@@ -18,4 +18,14 @@
         <a href="{{ url_for('dashboard') }}" class="btn" style="background-color: gray;">Cancel</a>
     </form>
 </div>
+
+<script>
+    function validateAndTrim() {
+        let available = document.getElementById('available');
+        let needed = document.getElementById('needed');
+        available.value = available.value.trim().toUpperCase();
+        needed.value = needed.value.trim().toUpperCase();
+        return true;
+    }
+</script>
 {% endblock %}

@@ -1,7 +1,28 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="container">
-    <h2>Welcome, {{ current_user.college_id }}</h2>
+    <h2>Welcome, {{ current_user.name }}</h2>
+
+    <!-- Notifications -->
+    {% if notifications %}
+    <div class="preference-list">
+        <h3>Notifications</h3>
+        <ul>
+            {% for note in notifications %}
+            <li>
+                <strong>{{ note.requester.name }}</strong>
+                (
+                <a href="https://wa.me/91{{ note.requester.phone }}" target="_blank">
+                    WhatsApp: {{ note.requester.phone }}
+                    <i class="fab fa-whatsapp" style="color: green;"></i>
+                </a>
+                )
+                requested your room <strong>{{ note.preference.available }}</strong> in exchange for <strong>{{ note.preference.needed }}</strong>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 
     <!-- Toggle Form Button -->
     <button id="toggleFormBtn" class="btn">Post Your Preference</button>
@@ -9,7 +30,7 @@
     <!-- Hidden Form -->
     <div id="preferenceForm" class="form-container" style="display: none;">
         <h3>Post Room Preference</h3>
-        <form method="POST" onsubmit="return validateAndTrim();">
+        <form method="POST" onsubmit="return validateAndTrimAndEmit();">
             <input type="text" name="available" id="available" placeholder="Your Current Room No." required>
             <input type="text" name="needed" id="needed" placeholder="Preferred Room No." required>
             <button type="submit">Submit</button>
@@ -54,26 +75,24 @@
         {% endif %}
     </div>
         
-    <!-- Filter by Floor -->
+    <!-- Search by Needed Room Number -->
     <form method="GET" action="{{ url_for('dashboard') }}" style="margin-bottom: 20px;">
-        <label for="floor">Filter by Floor:</label>
-        <select name="floor" id="floor" onchange="this.form.submit()">
-            <option value="">All Floors</option>
-            <option value="G" {% if floor_filter == 'G' %}selected{% endif %}>Ground Floor</option>
-            <option value="1" {% if floor_filter == '1' %}selected{% endif %}>First Floor</option>
-            <option value="2" {% if floor_filter == '2' %}selected{% endif %}>Second Floor</option>
-            <option value="3" {% if floor_filter == '3' %}selected{% endif %}>Third Floor</option>
-            <option value="4" {% if floor_filter == '4' %}selected{% endif %}>Fourth Floor</option>
-        </select>
+        <label for="search_needed">Search by required Room Number:</label>
+        <input type="text" name="search_needed" id="search_needed" placeholder="Enter required room number" value="{{ request.args.get('search_needed', '') }}">
+        <button type="submit">Search</button>
     </form>
+
     <!-- Other Users' Preferences -->
     <div class="preference-list">
-        <h3>Available Preferences from Others {% if floor_filter %}(Filtered by Floor {{ floor_filter }}){% endif %}</h3>
+        {% if search_needed %}
+        <h3>Search Results for Needed Room: {{ search_needed }}</h3>
+        {% else %}
+        <h3>Available Preferences from Others</h3>
+        {% endif %}
         {% if other_prefs %}
         <table>
             <tr>
                 <th>Name</th>
-                <th>User</th>
                 <th>Available</th>
                 <th>Needed</th>
                 <th>Action</th>
@@ -81,7 +100,6 @@
             {% for pref in other_prefs %}
             <tr>
                 <td>{{ pref.user.name }}</td>
-                <td>{{ pref.user.college_id }}</td>
                 <td>{{ pref.available }}</td>
                 <td>{{ pref.needed }}</td>
                 <td>
@@ -103,7 +121,7 @@
             {% endfor %}
         </table>
         {% else %}
-        <p>No room preferences posted yet{% if floor_filter %} on this floor{% endif %}.</p>
+        <p>No room preferences posted yet{% if search_needed %} for needed room '{{ search_needed }}'{% endif %}.</p>
         {% endif %}
     </div>
 </div>
@@ -129,11 +147,21 @@
         form.style.display = form.style.display === 'none' ? 'block' : 'none';
     });
 
-    function validateAndTrim() {
+    function validateAndTrimAndEmit() {
         let available = document.getElementById('available');
         let needed = document.getElementById('needed');
         available.value = available.value.trim().toUpperCase();
         needed.value = needed.value.trim().toUpperCase();
+        
+        // Emit SocketIO event for live update
+        if (window.emitNewPreference) {
+            window.emitNewPreference(
+                available.value, 
+                needed.value, 
+                '{{ current_user.name }}'
+            );
+        }
+        
         return true;
     }
 
@@ -183,7 +211,3 @@
     }
 </script>
 {% endblock %}
-
-
-
-
