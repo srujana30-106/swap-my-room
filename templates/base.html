@@ -48,7 +48,7 @@
     {% endwith %}
 
     <!-- Live Notification Box -->
-    <div id="notification" class="live-notification" style="display: none;"></div>
+    
 
     <main class="container">
         {% block content %}{% endblock %}
@@ -77,24 +77,10 @@
 
         socket.on('connect', () => {
             console.log('Connected to server with transport:', socket.io.engine.transport.name);
-            const notificationBox = document.getElementById("notification");
-            if (notificationBox) {
-                notificationBox.innerText = "Connected to live updates!";
-                notificationBox.style.display = "block";
-                notificationBox.style.backgroundColor = "#28a745";
-                setTimeout(() => { notificationBox.style.display = "none"; }, 2000);
-            }
         });
 
         socket.on('connect_error', (error) => {
             console.error('Connection error:', error);
-            const box = document.getElementById("notification");
-            if (box) {
-                box.innerText = "Connection failed. Retrying...";
-                box.style.display = "block";
-                box.style.backgroundColor = "#dc3545";
-                setTimeout(() => { box.style.display = "none"; }, 3000);
-            }
         });
 
         socket.on('disconnect', (reason) => {
@@ -102,42 +88,15 @@
         });
 
         socket.on('preference_update', (data) => {
-            const box = document.getElementById("notification");
-            if (box) {
-                box.innerText = data.message;
-                box.style.display = "block";
-                box.style.backgroundColor = "#007bff";
-                setTimeout(() => { box.style.display = "none"; }, 5000);
-            }
+            console.log('Preference update:', data);
         });
 
         socket.on('swap_request_notification', (data) => {
-            const box = document.getElementById("notification");
-            if (box) {
-                box.innerHTML = `
-                    <strong>Room Swap Request!</strong><br/>
-                    ${data.message}<br/>
-                    <small>Available: ${data.available} | Needed: ${data.needed}</small>
-                `;
-                box.style.display = "block";
-                box.style.backgroundColor = "#28a745";
-                box.style.border = "2px solid #155724";
-                box.style.fontWeight = "bold";
-                
-                setTimeout(() => { box.style.display = "none"; }, 8000);
-                console.log('Swap request:', data);
-            }
+            console.log('Swap request:', data);
         });
 
         socket.on('error', (data) => {
             console.error('Socket error:', data);
-            const box = document.getElementById("notification");
-            if (box) {
-                box.innerText = "Connection error: " + data.message;
-                box.style.display = "block";
-                box.style.backgroundColor = "#dc3545";
-                setTimeout(() => { box.style.display = "none"; }, 4000);
-            }
         });
 
         // Function to emit new preference events
