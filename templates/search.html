@@ -1,9 +1,13 @@
 <h2>Search Room Swaps</h2>
-<form method="GET">
-  <input name="floor" placeholder="Filter by Floor">
-  <input name="room" placeholder="Filter by Room">
+<div id="search-toggle-container" style="text-align:center; margin-bottom: 20px;">
+  <button id="show-search-btn" onclick="document.getElementById('search-form').style.display='block'; this.style.display='none';">Search by Room Number</button>
+</div>
+<form id="search-form" method="GET" style="display:none; text-align:center;">
+  <input name="floor" placeholder="Filter by Floor" value="{{ request.args.get('floor', '') }}">
+  <input name="room_number" placeholder="Filter by Room Number" value="{{ request.args.get('room_number', '') }}">
   <button type="submit">Filter</button>
 </form>
+{% if others %}
 <ul>
   {% for p in others %}
     <li>
@@ -17,3 +21,13 @@
     </li>
   {% endfor %}
 </ul>
+{% else %}
+  <p style="text-align:center; font-weight:bold; margin-top: 2em;">No records available</p>
+{% endif %}
+<script>
+  // Show search form if a search is already active
+  if (window.location.search.includes('room_number') || window.location.search.includes('floor')) {
+    document.getElementById('search-form').style.display = 'block';
+    document.getElementById('show-search-btn').style.display = 'none';
+  }
+</script>

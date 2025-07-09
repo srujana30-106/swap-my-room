@@ -3,9 +3,11 @@
 {% block content %}
 <div class="container">
     <h2>Welcome to <span class="highlight">Hostel Room Swap</span></h2>
+    {% if not current_user.is_authenticated %}
     <p>
         <a class="btn" href="{{ url_for('login') }}">Login</a>
         <a class="btn" href="{{ url_for('register') }}">Register</a>
     </p>
+    {% endif %}
 </div>
 {% endblock %}

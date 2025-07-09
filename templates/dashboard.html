@@ -1,213 +1,27 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container">
-    <h2>Welcome, {{ current_user.name }}</h2>
-
-    <!-- Notifications -->
-    {% if notifications %}
-    <div class="preference-list">
-        <h3>Notifications</h3>
-        <ul>
-            {% for note in notifications %}
-            <li>
-                <strong>{{ note.requester.name }}</strong>
-                (
-                <a href="https://wa.me/91{{ note.requester.phone }}" target="_blank">
-                    WhatsApp: {{ note.requester.phone }}
-                    <i class="fab fa-whatsapp" style="color: green;"></i>
-                </a>
-                )
-                requested your room <strong>{{ note.preference.available }}</strong> in exchange for <strong>{{ note.preference.needed }}</strong>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
-
-    <!-- Toggle Form Button -->
-    <button id="toggleFormBtn" class="btn">Post Your Preference</button>
-
-    <!-- Hidden Form -->
-    <div id="preferenceForm" class="form-container" style="display: none;">
-        <h3>Post Room Preference</h3>
-        <form method="POST" onsubmit="return validateAndTrimAndEmit();">
-            <input type="text" name="available" id="available" placeholder="Your Current Room No." required>
-            <input type="text" name="needed" id="needed" placeholder="Preferred Room No." required>
-            <button type="submit">Submit</button>
-        </form>
-    </div>
-
-    <!-- My Posted Preferences -->
-    <div class="preference-list">
-        <h3>My Posted Preferences</h3>
-        {% if my_prefs %}
-        <table>
-            <tr>
-                <th>Available</th>
-                <th>Needed</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-            {% for pref in my_prefs %}
-            <tr>
-                <td data-label="Available">{{ pref.available }}</td>
-                <td data-label="Needed">{{ pref.needed }}</td>
-                <td data-label="Status">
-                    {% set pending_requests = pref.requests|selectattr('status', 'equalto', 'pending')|list %}
-                    {% if pending_requests|length > 0 %}
-                        Requests Received ({{ pending_requests|length }})
-                        <button class="btn" onclick="showRequestsModal({{ pref.id }})">View Requests</button>
-                    {% else %}
-                        Not yet accepted
-                    {% endif %}
-                </td>
-                <td data-label="Actions">
-                    <div style="display: flex; gap: 10px; justify-content: center;">
-                        <a class="btn" href="{{ url_for('edit', pref_id=pref.id) }}">Edit</a>
-                        <a class="btn" href="{{ url_for('delete', pref_id=pref.id) }}">Delete</a>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% else %}
-        <p>You haven't posted any preferences yet.</p>
-        {% endif %}
-    </div>
-        
-    <!-- Search by Needed Room Number -->
-    <form method="GET" action="{{ url_for('dashboard') }}" style="margin-bottom: 20px;">
-        <label for="search_needed">Search by required Room Number:</label>
-        <input type="text" name="search_needed" id="search_needed" placeholder="Enter required room number" value="{{ request.args.get('search_needed', '') }}">
-        <button type="submit">Search</button>
-    </form>
-
-    <!-- Other Users' Preferences -->
-    <div class="preference-list">
-        {% if search_needed %}
-        <h3>Search Results for Needed Room: {{ search_needed }}</h3>
-        {% else %}
-        <h3>Available Preferences from Others</h3>
-        {% endif %}
-        {% if other_prefs %}
-        <table>
-            <tr>
-                <th>Name</th>
-                <th>Available</th>
-                <th>Needed</th>
-                <th>Action</th>
-            </tr>
-            {% for pref in other_prefs %}
-            <tr>
-                <td data-label="Name">{{ pref.user.name }}</td>
-                <td data-label="Available">{{ pref.available }}</td>
-                <td data-label="Needed">{{ pref.needed }}</td>
-                <td data-label="Action">
-                    {% set sent_request = pref.requests|selectattr('requester_id', 'equalto', current_user.id)|list %}
-                    {% set pending_request = sent_request|selectattr('status', 'equalto', 'pending')|list %}
-                    {% set rejected_request = sent_request|selectattr('status', 'equalto', 'rejected')|list %}
-                    {% if pending_request|length > 0 %}
-                        <span style="color: orange;">Request Sent</span>
-                        <form action="{{ url_for('cancel', req_id=pending_request[0].id) }}" method="POST" style="display:inline;">
-                            <button class="btn" style="background-color: orange;">Cancel Request</button>
-                        </form>
-                    {% elif rejected_request|length > 0 %}
-                        <span style="color: red;">Request Failed</span>
-                    {% else %}
-                        <a class="btn" href="{{ url_for('accept', pref_id=pref.id) }}">Send Request</a>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% else %}
-        <p>No room preferences posted yet{% if search_needed %} for needed room '{{ search_needed }}'{% endif %}.</p>
-        {% endif %}
+<div class="container dashboard-main">
+    <!-- Center Hero Section -->
+    <div class="hero-section">
+        <div class="hero-animation">
+            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR4dGbqfOqxjlCzi_PMlIYTo0ObNJXgh-WzKQ&s"
+                 alt="Hostel Illustration"
+                 class="center-hero-img"
+                 style="width: 180px; height: 180px; border-radius: 50%; box-shadow: 0 4px 24px rgba(0,0,0,0.10); background: #fff;" />
+        </div>
+        <div class="hero-greeting">
+            <h2>Hi {{ current_user.name }} </h2>
+            <p class="hero-sub">Ready to manage your hostel swaps today?</p>
+        </div>
+        <div class="hero-steps">
+            <span class="step"> Find</span>
+            <span class="arrow">➔</span>
+            <span class="step"> Request</span>
+            <span class="arrow">➔</span>
+            <span class="step">Approve</span>
+            <span class="arrow">➔</span>
+            <span class="step"> Move In</span>
+        </div>
     </div>
 </div>
-
-<!-- Modal for viewing requests -->
-<div id="requestsModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:1000;">
-    <div class="modal-content" style="background:#fff; margin:5% auto; padding:20px; border-radius:8px; max-width:600px; position:relative;">
-        <span class="close" onclick="closeRequestsModal()" style="position:absolute; top:10px; right:20px; font-size:28px; cursor:pointer;">&times;</span>
-        <h3>Requests for Your Room</h3>
-        <table id="requestsTable">
-            <tr>
-                <th>Name</th>
-                <th>WhatsApp</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </table>
-    </div>
-</div>
-<script>
-    document.getElementById('toggleFormBtn').addEventListener('click', () => {
-        const form = document.getElementById('preferenceForm');
-        form.style.display = form.style.display === 'none' ? 'block' : 'none';
-    });
-
-    function validateAndTrimAndEmit() {
-        let available = document.getElementById('available');
-        let needed = document.getElementById('needed');
-        available.value = available.value.trim().toUpperCase();
-        needed.value = needed.value.trim().toUpperCase();
-        
-        // Emit SocketIO event for live update
-        if (window.emitNewPreference) {
-            window.emitNewPreference(
-                available.value, 
-                needed.value, 
-                '{{ current_user.name }}'
-            );
-        }
-        
-        return true;
-    }
-
-    let allRequests = {};
-    {% for pref in my_prefs %}
-        allRequests[{{ pref.id }}] = [
-            {% for req in pref.requests if req.status == 'pending' or req.status == 'rejected' %}
-                {
-                    id: {{ req.id }},
-                    name: "{{ req.requester.name }}",
-                    phone: "{{ req.requester.phone }}",
-                    status: "{{ req.status }}"
-                },
-            {% endfor %}
-        ];
-    {% endfor %}
-    function showRequestsModal(prefId) {
-        const modal = document.getElementById('requestsModal');
-        const table = document.getElementById('requestsTable');
-        // Remove old rows
-        while(table.rows.length > 1) table.deleteRow(1);
-        // Add new rows
-        (allRequests[prefId] || []).forEach(req => {
-            let row = table.insertRow();
-            row.insertCell(0).innerText = req.name;
-            // Build WhatsApp link with default message in JS
-            const message = encodeURIComponent(`Hi ${req.name}, I am interested in swapping my room via Hostel Room Swap. Let me know if you are interested!`);
-            row.insertCell(1).innerHTML = `<a href='https://wa.me/91${req.phone}?text=${message}' target='_blank'>${req.phone}</a>`;
-            row.insertCell(2).innerText = req.status === 'rejected' ? 'Not Interested' : 'Pending';
-            let actions = '';
-            if(req.status === 'pending') {
-                actions += `<form style='display:inline;' method='POST' action='/commit_request/${req.id}'><button class='btn' style='background-color:green;'>Commit</button></form>`;
-                actions += `<form style='display:inline;' method='POST' action='/reject_request/${req.id}'><button class='btn' style='background-color:red;'>Not Interested</button></form>`;
-            }
-            row.insertCell(3).innerHTML = actions;
-        });
-        modal.style.display = 'block';
-    }
-    function closeRequestsModal() {
-        document.getElementById('requestsModal').style.display = 'none';
-    }
-    window.onclick = function(event) {
-        const modal = document.getElementById('requestsModal');
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
-    }
-</script>
 {% endblock %}

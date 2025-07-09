@@ -10,7 +10,7 @@
         </div>
         <!-- College ID -->
         <div class="input-wrapper">
-            <input type="text" name="college_id" placeholder="College ID (ROXXXXXX)" value="{{ values.college_id or '' }}" required autocomplete="nope" style="{% if errors.college_id %}border:1px solid red;{% endif %}">
+            <input type="text" name="college_id" placeholder="College ID (RO200000)" value="{{ values.college_id or '' }}" required autocomplete="nope" style="{% if errors.college_id %}border:1px solid red;{% endif %}">
             {% if errors.college_id %}
                 <div style="color:red; font-size:12px;">{{ errors.college_id }}</div>
             {% endif %}
@@ -22,11 +22,11 @@
                 <div style="color:red; font-size:12px;">{{ errors.email }}</div>
             {% endif %}
         </div>
-        <!-- Phone -->
+        <!-- Room Number -->
         <div class="input-wrapper">
-            <input type="text" name="phone" placeholder="WhatsApp Number" value="{{ values.phone or '' }}" required autocomplete="nope" style="{% if errors.phone %}border:1px solid red;{% endif %}">
-            {% if errors.phone %}
-                <div style="color:red; font-size:12px;">{{ errors.phone }}</div>
+            <input type="text" name="room_number" placeholder="Current Room Number" value="{{ values.room_number or '' }}" required autocomplete="nope" style="{% if errors.room_number %}border:1px solid red;{% endif %}">
+            {% if errors.room_number %}
+                <div style="color:red; font-size:12px;">{{ errors.room_number }}</div>
             {% endif %}
         </div>
         <!-- Password with eye icon -->

@@ -15,10 +15,19 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body class="site-body">
-    <header>
-        <div class="container">
-            <h1>Hostel Room Swap</h1>
-        </div>
+    
+    <header class="dashboard-header">
+      <div class="header-title">Hostel Room Swap</div>
+      {% if current_user.is_authenticated %}
+      <nav class="header-tabs">
+        <a class="tab-button {% if active_tab == 'dashboard' %}active-tab{% endif %}" href="{{ url_for('dashboard') }}">Home</a>
+        <a class="tab-button {% if active_tab == 'all_users' %}active-tab{% endif %}" href="{{ url_for('all_users') }}">All Users</a>
+        <a class="tab-button {% if active_tab == 'my_requests' %}active-tab{% endif %}" href="{{ url_for('my_requests') }}">My Requests</a>
+        <a class="tab-button {% if active_tab == 'invitations' %}active-tab{% endif %}" href="{{ url_for('invitations') }}">Invitations</a>
+        <a class="tab-button {% if active_tab == 'swap_history' %}active-tab{% endif %}" href="{{ url_for('swap_history') }}">Swap History</a>
+        <a class="tab-button {% if active_tab == 'profile' %}active-tab{% endif %}" href="{{ url_for('profile') }}"><i class="fa fa-user"></i> Your Profile</a>
+      </nav>
+      {% endif %}
     </header>
 
     <!-- Flash Messages -->

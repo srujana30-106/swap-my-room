@@ -12,7 +12,7 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(50), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False, index=True)
-    phone = db.Column(db.String(10), unique=True, nullable=False, index=True)
+    room_number = db.Column(db.String(20), nullable=False, index=True)
 
     def get_id(self):
         return str(self.id)
@@ -48,6 +48,8 @@ class SwapRequest(db.Model):
     preference_id = db.Column(db.Integer, db.ForeignKey('room_preferences.id'), nullable=False, index=True)
     requester_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     status = db.Column(db.String(20), default='pending', nullable=False, index=True)  # pending, committed, rejected
+    from_room_number = db.Column(db.String(20))  # requester's room at request time
+    to_room_number = db.Column(db.String(20))    # preference owner's room at request time
 
     # Relationships
     requester = relationship('User', foreign_keys=[requester_id])

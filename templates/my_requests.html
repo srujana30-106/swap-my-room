@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2>My Requests</h2>
+  {% if my_requests %}
+  <table>
+    <tr>
+      <th>Name</th>
+      <th>Room Number</th>
+      <th>Status</th>
+    </tr>
+    {% for request in my_requests %}
+    <tr>
+      <td>{{ request.preference.user.name }}</td>
+      <td>{{ request.preference.user.room_number }}</td>
+      <td>
+        {% if request.status == 'committed' %}
+          <span style="color: green; font-weight: bold;">You are accepted</span>
+        {% elif request.status == 'rejected' %}
+          <span style="color: red; font-weight: bold;">Your request rejected</span>
+        {% else %}
+          {{ request.status|capitalize }}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p style="text-align:center; font-weight:bold; margin-top: 2em;">No records available</p>
+{% endif %}
+</div>
+{% endblock %} 

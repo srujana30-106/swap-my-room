@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2>Invitations</h2>
+  {% if my_invitations %}
+  <table>
+    <tr>
+      <th>Name</th>
+      <th>Room Number</th>
+      <th>Status</th>
+    </tr>
+    {% for req in my_invitations %}
+    <tr>
+      <td>{{ req.requester.name }}</td>
+      <td>{{ req.from_room_number }}</td>
+      <td>
+        {% if req.status == 'committed' %}
+          <span style="color: green; font-weight: bold;">You accepted</span>
+        {% elif req.status == 'rejected' %}
+          <span style="color: red; font-weight: bold;">You rejected</span>
+        {% else %}
+          <form method="POST" action="{{ url_for('commit_request', req_id=req.id) }}" style="display:inline;">
+            <button class="btn" style="background-color:green;">Accept</button>
+          </form>
+          <form method="POST" action="{{ url_for('reject_request', req_id=req.id) }}" style="display:inline;">
+            <button class="btn" style="background-color:red;">Reject</button>
+          </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p style="text-align:center; font-weight:bold; margin-top: 2em;">No records available</p>
+{% endif %}
+</div>
+{% endblock %} 

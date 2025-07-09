@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2>Swap History</h2>
+  {% if swap_history %}
+    <table>
+      <tr>
+        <th>Name</th>
+        <th>From</th>
+        <th>To</th>
+      </tr>
+      {% for swap in swap_history %}
+        {% if swap.requester_id == current_user.id %}
+          <tr>
+            <td>{{ swap.preference.user.name }}</td>
+            <td>{{ swap.preference.user.room_number }}</td>
+            <td>{{ swap.requester.room_number }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td>{{ swap.requester.name }}</td>
+            <td>{{ swap.requester.room_number }}</td>
+            <td>{{ swap.preference.user.room_number }}</td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+    </table>
+  {% else %}
+    <p style="text-align:center; font-weight:bold; margin-top: 2em;">No swap history available</p>
+  {% endif %}
+</div>
+{% endblock %} 
