@@ -113,7 +113,7 @@ The application uses **Flask-SocketIO** for real-time features:
 - college_id (Unique, 8 characters)
 - password (Hashed)
 - email (Unique)
-- phone (Unique, 10 digits)
+
 ```
 
 ### RoomPreference Model

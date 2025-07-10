@@ -13,6 +13,7 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False, index=True)
     room_number = db.Column(db.String(20), nullable=False, index=True)
+    is_looking_to_swap = db.Column(db.Boolean, default=True, index=True)  # Toggle for swap availability
 
     def get_id(self):
         return str(self.id)

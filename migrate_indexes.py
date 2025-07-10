@@ -9,7 +9,7 @@ def add_indexes():
             indexes = [
                 "CREATE INDEX IF NOT EXISTS idx_users_college_id ON users(college_id);",
                 "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);", 
-                "CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);",
+        
                 "CREATE INDEX IF NOT EXISTS idx_room_preferences_user_id ON room_preferences(user_id);",
                 "CREATE INDEX IF NOT EXISTS idx_room_preferences_available ON room_preferences(available);",
                 "CREATE INDEX IF NOT EXISTS idx_room_preferences_needed ON room_preferences(needed);",

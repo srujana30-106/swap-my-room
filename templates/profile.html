@@ -10,9 +10,19 @@
     <tr><th style="text-align:left;">Room Number</th><td style="text-align:right;">{{ current_user.room_number }}</td></tr>
     <tr><th style="text-align:left;">Gmail</th><td style="text-align:right;">{{ current_user.email }}</td></tr>
     <tr><th style="text-align:left;">College ID</th><td style="text-align:right;">{{ current_user.college_id }}</td></tr>
+    <tr><th style="text-align:left;">Swap Availability</th><td style="text-align:right;">
+      <span style="color: {% if current_user.is_looking_to_swap %}#28a745{% else %}#dc3545{% endif %}; font-weight: bold;">
+        {% if current_user.is_looking_to_swap %}🟢 ON{% else %}🔴 OFF{% endif %}
+      </span>
+    </td></tr>
   </table>
   <div style="margin-top: 30px; text-align:center;">
     <a class="btn" href="{{ url_for('edit_profile') }}" style="background-color: #3498db; margin-bottom: 10px;">Edit Profile</a>
+    <form action="{{ url_for('toggle_swap_availability') }}" method="post" style="display:inline; margin-left: 10px;">
+      <button class="btn" style="background-color: {% if current_user.is_looking_to_swap %}#dc3545{% else %}#28a745{% endif %};">
+        {% if current_user.is_looking_to_swap %}Turn OFF{% else %}Turn ON{% endif %} Swap Availability
+      </button>
+    </form>
   </div>
   <form action="{{ url_for('logout') }}" method="get" style="margin-top: 10px; text-align:center;">
     <button class="btn" style="background-color: #e74c3c;">Logout</button>

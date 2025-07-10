@@ -115,11 +115,22 @@ def login():
     if request.method == 'POST':
         college_id = request.form.get('college_id', '').strip().upper()
         password = request.form.get('password', '')
-        user = User.query.filter_by(college_id=college_id, password=password).first()
+        
+        # First check if user exists
+        user = User.query.filter_by(college_id=college_id).first()
+        
         if user:
-            login_user(user)
-            return redirect(url_for('dashboard'))
-        flash('Invalid credentials', 'danger')
+            # User exists, check password
+            if user.password == password:
+                login_user(user)
+                return redirect(url_for('dashboard'))
+            else:
+                flash('Incorrect password. Please try again.', 'danger')
+        else:
+            # User doesn't exist
+            flash('Account not found. Please create an account first.', 'warning')
+            flash('Don\'t have an account? <a href="/register" style="color:#007bff;text-decoration:underline;">Create one here</a>', 'info')
+    
     return render_template('login.html')
 
 
@@ -231,11 +242,17 @@ def dashboard():
 @login_required
 def all_users():
     search_room = request.args.get('search_room', '').strip()
-    query = User.query
+    query = User.query.filter(User.is_looking_to_swap == True)  # Only show users who want to swap
     if search_room:
         query = query.filter(User.room_number.ilike(f'%{search_room}%'))
     query = query.filter(User.id != current_user.id)
     users = query.all()
+
+    # Get preferences for all users
+    user_preferences = {}
+    for user in users:
+        prefs = RoomPreference.query.filter_by(user_id=user.id).all()
+        user_preferences[user.id] = prefs
 
     # Find all pending requests sent by current user
     sent_requests = SwapRequest.query.join(RoomPreference).filter(
@@ -246,7 +263,13 @@ def all_users():
     sent_user_ids = [req.preference.user_id for req in sent_requests]
     sent_request_ids = {req.preference.user_id: req.id for req in sent_requests}
 
-    return render_template('all_users.html', users=users, search_room=search_room, sent_user_ids=sent_user_ids, sent_request_ids=sent_request_ids, active_tab='all_users')
+    return render_template('all_users.html', 
+                         users=users, 
+                         search_room=search_room, 
+                         sent_user_ids=sent_user_ids, 
+                         sent_request_ids=sent_request_ids, 
+                         user_preferences=user_preferences,
+                         active_tab='all_users')
 
 @app.route('/available_rooms')
 def available_rooms():
@@ -284,7 +307,6 @@ def accept(pref_id):
         socketio.emit('swap_request_notification', {
             'message': f"{current_user.name} wants to swap rooms with you!",
             'requester': current_user.name,
-            'requester_phone': current_user.phone,
             'available': pref.needed,
             'needed': pref.available,
             'original_poster': pref.user.name,
@@ -402,13 +424,34 @@ def delete(pref_id):
 @app.route('/delete_account', methods=['POST'])
 @login_required
 def delete_account():
-    user = current_user
-    from flask_login import logout_user
-    logout_user()
-    db.session.delete(user)
-    db.session.commit()
-    flash('Your account has been deleted.', 'info')
-    return redirect(url_for('home'))
+    try:
+        user = current_user
+
+        # Delete all swap requests where user is requester
+        SwapRequest.query.filter_by(requester_id=user.id).delete()
+
+        # Delete all swap requests where user owns the preference
+        user_prefs = RoomPreference.query.filter_by(user_id=user.id).all()
+        for pref in user_prefs:
+            SwapRequest.query.filter_by(preference_id=pref.id).delete()
+
+        # Delete all room preferences for the user
+        RoomPreference.query.filter_by(user_id=user.id).delete()
+
+        # Now delete the user
+        db.session.delete(user)
+        db.session.commit()
+
+        from flask_login import logout_user
+        logout_user()
+        flash('Your account has been deleted successfully.', 'success')
+        return redirect(url_for('home'))
+
+    except Exception as e:
+        db.session.rollback()
+        print("Delete account error:", e)  # This will help you debug
+        flash('Error deleting account. Please try again.', 'danger')
+        return redirect(url_for('profile'))
 
 
 @app.route('/logout')
@@ -482,6 +525,17 @@ def edit_profile():
         flash('Profile updated successfully.', 'success')
         return redirect(url_for('profile'))
     return render_template('edit_profile.html', active_tab='profile')
+
+
+@app.route('/toggle_swap_availability', methods=['POST'])
+@login_required
+def toggle_swap_availability():
+    current_user.is_looking_to_swap = not current_user.is_looking_to_swap
+    db.session.commit()
+    
+    status = "ON" if current_user.is_looking_to_swap else "OFF"
+    flash(f'Swap availability turned {status}.', 'success')
+    return redirect(url_for('dashboard'))
 
 
 if __name__ == '__main__':

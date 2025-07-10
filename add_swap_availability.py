@@ -3,9 +3,9 @@ from models import db
 import psycopg2
 from config import Config
 
-def migrate_phone_field():
+def add_swap_availability_column():
     """
-    Migration script to update phone field from VARCHAR(10) to VARCHAR(15)
+    Migration script to add is_looking_to_swap column to users table
     """
     try:
         with app.app_context():
@@ -16,8 +16,8 @@ def migrate_phone_field():
             conn = psycopg2.connect(database_url)
             cursor = conn.cursor()
             
-            # Alter the phone column to allow 15 characters
-            alter_query = "ALTER TABLE users ALTER COLUMN phone TYPE VARCHAR(15);"
+            # Add the is_looking_to_swap column
+            alter_query = "ALTER TABLE users ADD COLUMN is_looking_to_swap BOOLEAN DEFAULT TRUE;"
             cursor.execute(alter_query)
             
             # Commit the changes
@@ -25,12 +25,12 @@ def migrate_phone_field():
             cursor.close()
             conn.close()
             
-            print("Successfully migrated phone field from VARCHAR(10) to VARCHAR(15)")
-            print("Phone numbers can now accommodate country codes!")
+            print("Successfully added is_looking_to_swap column to users table")
+            print("All existing users are set to 'looking to swap' by default")
             
     except Exception as e:
-        print(f" Migration failed: {e}")
-        print("This might be normal if the table was already updated")
+        print(f"Migration failed: {e}")
+        print("This might be normal if the column was already added")
 
 if __name__ == '__main__':
-    migrate_phone_field() 
+    add_swap_availability_column() 

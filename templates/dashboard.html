@@ -12,6 +12,16 @@
         <div class="hero-greeting">
             <h2>Hi {{ current_user.name }} </h2>
             <p class="hero-sub">Ready to manage your hostel swaps today?</p>
+            <div style="margin-top: 10px;">
+                <span style="color: {% if current_user.is_looking_to_swap %}#28a745{% else %}#dc3545{% endif %}; font-weight: bold; margin-right: 10px;">
+                    Swap Availability: {% if current_user.is_looking_to_swap %}🟢 ON{% else %}🔴 OFF{% endif %}
+                </span>
+                <form action="{{ url_for('toggle_swap_availability') }}" method="post" style="display:inline;">
+                    <button class="btn" style="background-color: {% if current_user.is_looking_to_swap %}#dc3545{% else %}#28a745{% endif %}; padding: 5px 10px; font-size: 12px;">
+                        {% if current_user.is_looking_to_swap %}Turn OFF{% else %}Turn ON{% endif %}
+                    </button>
+                </form>
+            </div>
         </div>
         <div class="hero-steps">
             <span class="step"> Find</span>
