@@ -475,3 +475,51 @@ table tr:nth-child(even) {
   border-radius: 0 !important;
   box-shadow: none !important;
 }
+
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.table-responsive table {
+    width: 100%;
+    min-width: 500px; /* or whatever fits your columns */
+    border-collapse: collapse;
+}
+
+@media (max-width: 600px) {
+    .table-responsive table,
+    .table-responsive th,
+    .table-responsive td {
+        font-size: 0.95em;
+        padding: 6px 2px;
+    }
+    .table-responsive table {
+        min-width: 350px;
+    }
+}
+
+@media (max-width: 600px) {
+    input[type="text"], button, .btn {
+        width: 100% !important;
+        box-sizing: border-box;
+        margin-bottom: 8px;
+    }
+}
+
+@media (max-width: 400px) {
+    .hero-section img, .center-hero-img {
+        width: 70px !important;
+        height: 70px !important;
+    }
+}
+
+@media (max-width: 600px) {
+    .header-tabs {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    .tab-button {
+        min-width: 100px;
+    }
+}

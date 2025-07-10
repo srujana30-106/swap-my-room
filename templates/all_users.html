@@ -10,31 +10,33 @@
     {% endif %}
   </form>
   {% if users %}
-    <table>
-      <tr>
-        <th>Name</th>
-        <th>Room Number</th>
-        <th>Action</th>
-      </tr>
-      {% for user in users %}
-      <tr>
-        <td>{{ user.name }}</td>
-        <td>{{ user.room_number }}</td>
-        <td>
-          {% if user.id in sent_user_ids %}
-            <span style="color: orange;">Request Sent</span>
-            <form action="{{ url_for('cancel', req_id=sent_request_ids[user.id]) }}" method="POST" style="display:inline;">
-              <button class="btn" style="background-color: orange;">Cancel Request</button>
-            </form>
-          {% else %}
-            <form action="{{ url_for('send_direct_request', user_id=user.id) }}" method="POST" style="display:inline;">
-              <button class="btn">Send Request</button>
-            </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </table>
+    <div class="table-responsive">
+      <table>
+        <tr>
+          <th>Name</th>
+          <th>Room Number</th>
+          <th>Action</th>
+        </tr>
+        {% for user in users %}
+        <tr>
+          <td>{{ user.name }}</td>
+          <td>{{ user.room_number }}</td>
+          <td>
+            {% if user.id in sent_user_ids %}
+              <span style="color: orange;">Request Sent</span>
+              <form action="{{ url_for('cancel', req_id=sent_request_ids[user.id]) }}" method="POST" style="display:inline;">
+                <button class="btn" style="background-color: orange;">Cancel Request</button>
+              </form>
+            {% else %}
+              <form action="{{ url_for('send_direct_request', user_id=user.id) }}" method="POST" style="display:inline;">
+                <button class="btn">Send Request</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
   {% else %}
     <p style="text-align:center; font-weight:bold; margin-top: 2em;">No records available</p>
   {% endif %}
